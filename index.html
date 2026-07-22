@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>芒果樹 7/22 餐廳地圖導航</title>
+<style>
+  :root {
+    --card:#1a2332; --text:#eef3f8; --muted:#9fb0c3;
+    --accent:#3dd6c6; --accent2:#5b9dff; --line:#2a3545;
+    --row:#1a2332; --row2:#152033; --head:#101a28;
+  }
+  * { box-sizing:border-box; }
+  body {
+    margin:0;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans TC","Microsoft JhengHei",sans-serif;
+    background:linear-gradient(180deg,#0b1020,#121a24 45%,#0f1419);
+    color:var(--text); line-height:1.5; padding:0 0 72px;
+  }
+  .topbar {
+    position:sticky; top:0; z-index:20;
+    background:rgba(10,16,28,.94); backdrop-filter:blur(10px);
+    border-bottom:1px solid var(--line); padding:12px 14px 10px;
+  }
+  .topbar-inner { max-width:980px; margin:0 auto; }
+  h1 { font-size:1.15rem; margin:0 0 4px; }
+  .sub { color:var(--muted); font-size:.86rem; margin-bottom:10px; }
+  .search-wrap { display:flex; gap:8px; align-items:center; }
+  #q {
+    flex:1; min-width:0; background:#0e1624; color:var(--text);
+    border:1px solid #33455c; border-radius:12px; padding:12px 14px; font-size:1rem; outline:none;
+  }
+  #q:focus { border-color:var(--accent2); box-shadow:0 0 0 3px rgba(91,157,255,.18); }
+  #q::placeholder { color:#7f91a6; }
+  .clear-btn {
+    background:#243246; color:#d7e4f4; border:1px solid #3a5168;
+    border-radius:12px; padding:12px; cursor:pointer; white-space:nowrap;
+  }
+  .meta { margin-top:8px; color:var(--muted); font-size:.84rem; display:flex; justify-content:space-between; gap:8px; flex-wrap:wrap; }
+  .nav { max-width:980px; margin:12px auto 0; padding:0 14px; font-size:.82rem; line-height:1.9; color:var(--muted); }
+  .nav a { color:var(--accent2); text-decoration:none; margin-right:2px; }
+  .wrap { max-width:980px; margin:0 auto; padding:8px 14px 24px; }
+  h2 { margin:22px 0 10px; font-size:1.02rem; color:var(--accent); display:flex; align-items:center; gap:8px; }
+  .count { background:#183042; color:#9fdfff; border-radius:999px; font-size:.78rem; padding:2px 8px; font-weight:600; }
+  .table-wrap { background:var(--card); border:1px solid var(--line); border-radius:14px; overflow:hidden; }
+  table { width:100%; border-collapse:collapse; }
+  th, td { padding:12px; text-align:left; vertical-align:middle; }
+  th { background:var(--head); color:var(--muted); font-weight:600; font-size:.86rem; border-bottom:1px solid var(--line); }
+  tbody tr { border-bottom:1px solid var(--line); background:var(--row); }
+  tbody tr:nth-child(even) { background:var(--row2); }
+  tbody tr.hidden { display:none; }
+  section.zone.hidden { display:none; }
+  .name { font-weight:700; font-size:.98rem; }
+  .note { color:var(--muted); font-size:.8rem; margin-top:3px; }
+  .c-name { width:34%; }
+  .c-addr { width:48%; color:#d7e4f4; font-size:.94rem; }
+  .c-map { width:18%; text-align:center !important; white-space:nowrap; }
+  a.map {
+    display:inline-block; color:#041018 !important; text-decoration:none; font-weight:700;
+    background:linear-gradient(135deg,var(--accent),var(--accent2));
+    padding:8px 14px; border-radius:999px; font-size:.9rem;
+  }
+  .na { color:#6f8298; }
+  .empty { display:none; margin:28px 0; text-align:center; color:var(--muted); background:var(--card); border:1px dashed var(--line); border-radius:14px; padding:28px 12px; }
+  .empty.show { display:block; }
+  .top { position:fixed; right:14px; bottom:18px; z-index:9; background:#2a3f55; color:#fff; border-radius:999px; padding:10px 14px; text-decoration:none; font-size:.85rem; border:1px solid #3a5168; }
+  @media (max-width:640px) {
+    th, td { padding:10px 8px; }
+    a.map { padding:7px 10px; font-size:.84rem; }
+  }
+</style>
+</head>
+<body>
+  <div class="topbar">
+    <div class="topbar-inner">
+      <h1>芒果樹 7/22 餐廳地圖導航</h1>
+      <div class="sub">表格清單 · 依相近地址分區 · 點「地圖」導航<br><span style="color:#9fdfff">可轉傳給同事：用瀏覽器開啟即可查詢（不需安裝）</span></div>
+      <div class="search-wrap">
+        <input id="q" type="search" placeholder="搜尋店名、地址、路段… 例如：金山、光復、明湖、肯德基" autocomplete="off">
+        <button class="clear-btn" type="button" id="clearBtn">清除</button>
+      </div>
+      <div class="meta">
+        <span id="resultInfo">共 133 筆</span>
+        <span>分區＝相近門牌／路段（非配送區）</span>
+      </div>
+    </div>
+  </div>
+  <div class="nav"><strong>路段分區</strong>　<a href="#新竹東區・光復路一段一帶">新竹東區・光復路一段一帶</a> · <a href="#新竹東區・光復路二段一帶">新竹東區・光復路二段一帶</a> · <a href="#新竹東區・金山街">新竹東區・金山街</a> · <a href="#新竹東區・金山一～九街">新竹東區・金山一～九街</a> · <a href="#新竹東區・金山十街～十九街">新竹東區・金山十街～十九街</a> · <a href="#新竹東區・金山二十街附近">新竹東區・金山二十街附近</a> · <a href="#新竹東區・東南街一帶">新竹東區・東南街一帶</a> · <a href="#新竹東區・學府路一帶">新竹東區・學府路一帶</a> · <a href="#新竹東區・建功路一帶">新竹東區・建功路一帶</a> · <a href="#新竹東區・建中路一帶">新竹東區・建中路一帶</a> · <a href="#新竹東區・建新路一帶">新竹東區・建新路一帶</a> · <a href="#新竹東區・關東路一帶">新竹東區・關東路一帶</a> · <a href="#新竹東區・關新路一帶">新竹東區・關新路一帶</a> · <a href="#新竹東區・科學園路一帶">新竹東區・科學園路一帶</a> · <a href="#新竹東區・食品路一帶">新竹東區・食品路一帶</a> · <a href="#新竹東區・南大路一帶">新竹東區・南大路一帶</a> · <a href="#新竹東區・新莊街一帶">新竹東區・新莊街一帶</a> · <a href="#新竹東區・長春街一帶">新竹東區・長春街一帶</a> · <a href="#新竹東區・埔頂一帶">新竹東區・埔頂一帶</a> · <a href="#新竹東區・高翠路一帶">新竹東區・高翠路一帶</a> · <a href="#新竹東區・寶山路一帶">新竹東區・寶山路一帶</a> · <a href="#新竹東區・忠孝路一帶">新竹東區・忠孝路一帶</a> · <a href="#新竹東區・興學街一帶">新竹東區・興學街一帶</a> · <a href="#新竹東區・大學路一帶">新竹東區・大學路一帶</a> · <a href="#新竹東區・東山街一帶">新竹東區・東山街一帶</a> · <a href="#新竹東區・民有一街一帶">新竹東區・民有一街一帶</a> · <a href="#新竹東區・金城路一帶">新竹東區・金城路一帶</a> · <a href="#新竹東區・其他">新竹東區・其他</a> · <a href="#新竹・西大路一帶">新竹・西大路一帶</a> · <a href="#新竹・中正路一帶">新竹・中正路一帶</a> · <a href="#竹北・勝利路一帶">竹北・勝利路一帶</a> · <a href="#寶山鄉・明湖路一帶">寶山鄉・明湖路一帶</a> · <a href="#寶山鄉・雙豐路一帶">寶山鄉・雙豐路一帶</a> · <a href="#寶山鄉・雙園路一帶">寶山鄉・雙園路一帶</a> · <a href="#地址待確認">地址待確認</a></div>
+  <div class="wrap">
+    <div id="empty" class="empty">找不到符合的餐廳，換個關鍵字試試</div>
+    
+<section class="zone" id="新竹東區・光復路一段一帶" data-zone="新竹東區・光復路一段一帶">
+  <h2>新竹東區・光復路一段一帶 <span class="count">19</span></h2>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th class="c-name">店名</th><th class="c-addr">地址</th><th class="c-map">導航</th></tr></thead>
+      <tbody><tr class="row" data-q="豐盛堂 新竹市東區光復路一段112號  新竹東區・光復路一段一帶" data-idx="0"><td class="c-name"><div class="name">豐盛堂</div></td><td class="c-addr">新竹市東區光復路一段112號</td><td class="c-map"><a class="map" href="https://www.google.com/maps/search/?api=1&amp;query=%E8%B1%90%E7%9B%9B%E5%A0%82%20%E6%96%B0%E7%AB%B9%E5%B8%82%E6%9D%B1%E5%8D%80%E5%85%89%E5%BE%A9%E8%B7%AF%E4%B8%80%E6%AE%B5112%E8%99%9F" target="_blank" rel="noopener">地圖</a></td></tr><tr class="row" data-q="飛龍排骨 新竹市東區光復路一段141號  新竹東區・光復路一段一帶" data-idx="1"><td class="c-name"><div class="name">飛龍排骨</div></td><td class="c-addr">新竹市東區光復路一段141號</td><td class="c-map"><a class="map" href="https://maps.app.goo.gl/5XacxqcBe7ewmcHr9" target="_blank" rel="noopener">地圖</a></td></tr><tr class="row" data-q="再睡5分鐘 新竹市東區光復路一段173號  新竹東區・光復路一段一帶" data-idx="2"><td class="c-name"><div class="name">再睡5分鐘</div></td><td class="c-addr">新竹市東區光復路一段173號</td><td class="c-map"><a class="map" href="https://www.google.com/maps/search/?api=1&amp;query=%E5%86%8D%E7%9D%A15%E5%88%86%E9%90%98%20%E6%96%B0%E7%AB%B9%E5%B8%82%E6%9D%B1%E5%8D%80%E5%85%89%E5%BE%A9%E8%B7%AF%E4%B8%80%E6%AE%B5173%E8%99%9F" target="_blank" rel="noopener">地圖</a></td></tr><tr class="row" data-q="大王茶迷 新竹市東區光復路一段193號  新竹東區・光復路一段一帶" data-idx="3"><td class="c-name"><div class="name">大王茶迷</div></td><td class="c-addr">新竹市東區光復路一段193號</td><td class="c-map"><a class="map" href="https://www.google.com/maps/search/?api=1&amp;query=%E5%A4%A7%E7%8E%8B%E8%8C%B6%E8%BF%B7%20%E6%96%B0%E7%AB%B9%E5%B8%82%E6%9D%B1%E5%8D%80%E5%85%89%E5%BE%A9%E8%B7%AF%E4%B8%80%E6%AE%B5193%E8%99%9F" target="_blank" rel="noopener">地圖</a></td></tr><tr class="row" data-q="甘蔗媽媽 新竹市東區光復路一段196號  新竹東區・光復路一段一帶" data-idx="4"><td class="c-name"><div class="name">甘蔗媽媽</div></td><td class="c-addr">新竹市東區光復路一段196號</td><td class="c-map"><a class="map" href="https://www.google.com/maps/search/?api=1&amp;query=%E7%94%98%E8%94%97%E5%AA%BD%E5%AA%BD%20%E6%96%B0%E7%AB%B9%E5%B8%82%E6%9D%B1%E5%8D%80%E5%85%89%E5%BE%A9%E8%B7%AF%E4%B8%80%E6%AE%B5196%E8%99%9F" target="_blank" rel="noopener">地圖</a></td></tr><tr class="row" data-q="胖老爹(介壽店) 新竹市東區光復路一段217號  新竹東區・光復路一段一帶" data-idx="5"><td class="c-name"><div class="name">胖老爹(介壽店)</div></td><td class="c-addr">新竹市東區光復路一段217號</td><td class="c-map"><a class="map" href="https://maps.app.goo.gl/v2B8oLc5DgLBuCNJ6" target="_blank" rel="noopener">地圖</a></td></tr><tr class="row" data-q="小時厚牛排 新竹市東區光復路一段375號1樓  新竹東區・光復路一段一帶" data-idx="6"><td class="c-name"><div class="name">小時厚牛排</div></td><td class="c-addr">新竹市東區光復路一段375號1樓</td><td class="c-map"><a class="map" href="https://maps.app.goo.gl/cZXiyi3C1QmWz4Vy6" target="_blank" rel="noopener">地圖</a></td></tr><tr class="row" data-q="清水茶香 新竹市東區光復路一段382號  新竹東區・光復路一段一帶" data-idx="7"><td class="c-name"><div class="name">清水茶香</div></td><td class="c-addr">新竹市東區光復路一段382號</td><td class="c-map"><a class="map" href="https://www.google.com/maps/search/?api=1&amp;query=%E6%B8%85%E6%B0%B4%E8%8C%B6%E9%A6%99%20%E6%96%B0%E7%AB%B9%E5%B8%82%E6%9D%B1%E5%8D%80%E5%85%89%E5%BE%A9%E8%B7%AF%E4%B8%80%E6%AE%B5382%E8%99%9F" target="_blank" rel="noopener">地圖</a></td></tr><tr class="row" data-q="大中華粥麵館 新竹市東區光復路一段408號  新竹東區・光復路一段一帶" data-idx="8"><td class="c-name"><div class="name">大中華粥麵館</div></td><td class="c-addr">新竹市東區光復路一段408號</td><td class="c-map"><a class="map" href="https://www.google.com/maps/search/?api=1&amp;query=%E5%A4%A7%E4%B8%AD%E8%8F%AF%E7%B2%A5%E9%BA%B5%E9%A4%A8%20%E6%96%B0%E7%AB%B9%E5%B8%82%E6%9D%B1%E5%8D%80%E5%85%89%E5%BE%A9%E8%B7%AF%E4%B8%80%E6%AE%B5408%E8%99%9F" target="_blank" rel="noopener">地圖</a></td></tr><tr class="row" data-q="吃霸 新竹市東區光復路一段409號  新竹東區・光復路一段一帶" data-idx="9"><td class="c-name"><div class="name">吃霸</div></td><td class="c-addr">新竹市東區光復路一段409號</td><td class="c-map"><a class="map" href="https://www.google.com/maps/search/?api=1&amp;query=%E5%90%83%E9%9C%B8%20%E6%96%B0%E7%AB%B9%E5%B8%82%E6%9D%B1%E5%8D%80%E5%85%89%E5%BE%A9%E8%B7%AF%E4%B8%80%E6%AE%B5409%E8%99%9F" target="_blank" rel="noopener">地圖</a></td></tr><tr class="row" data-q="非晉餐廚 新竹市東區光復路一段421號  新竹東區・光復路一段一帶" data-idx="10"><td class="c-name"><div class="name">非晉餐廚</div></td><td class="c-addr">新竹市東區光復路一段421號</td><td class="c-map"><a class="map" href="https://www.google.com/maps/search/?api=1&amp;query=%E9%9D%9E%E6%99%89%E9%A4%90%E5%BB%9A%20%E6%96%B0%E7%AB%B9%E5%B8%82%E6%9D%B1%E5%8D%80%E5%85%89%E5%BE%A9%E8%B7%AF%E4%B8%80%E6%AE%B5421%E8%99%9F" target="_blank" rel="noopener">地圖</a></td></tr><tr class="row" data-q="青山 新竹市東區光復路一段424號  新竹東區・光復路一段一帶" data-idx="11"><td class="c-name"><div class="name">青山</div></td><td class="c-addr">新竹市東區光復路一段424號</td><td class="c-map"><a class="map" href="https://www.google.com/maps/search/?api=1&amp;query=%E9%9D%92%E5%B1%B1%20%E6%96%B0%E7%AB%B9%E5%B8%82%E6%9D%B1%E5%8D%80%E5%85%89%E5%BE%A9%E8%B7%AF%E4%B8%80%E6%AE%B5424%E8%99%9F" target="_blank" rel="noopener">地圖</a></td></tr><tr class="row" data-q="六扇門時尚湯鍋 新竹市東區光復路一段448之1號  新竹東區・光復路一段一帶" data-idx="12"><td class="c-name"><div class="name">六扇門時尚湯鍋</div></td><td class="c-addr">新竹市東區光復路一段448之1號</td><td class="c-map"><a class="map" href="https://www.google.com/maps/search/?api=1&amp;query=%E5%85%AD%E6%89%87%E9%96%80%E6%99%82%E5%B0%9A%E6%B9%AF%E9%8D%8B%20%E6%96%B0%E7%AB%B9%E5%B8%82%E6%9D%B1%E5%8D%80%E5%85%89%E5%BE%A9%E8%B7%AF%E4%B8%80%E6%AE%B5448%E4%B9%8B1%E8%99%9F" target="_blank" rel="noopener">地圖</a></td></tr><tr class="row" data-q="老王灶咖 新竹市東區光復路一段50號  新竹東區・光復路一段一帶" data-idx="13"><td class="c-name"><div class="name">老王灶咖</div></td><td class="c-addr">新竹市東區光復路一段50號</td><td class="c-map"><a class="map" href="https://www.google.com/maps/search/?api=1&amp;query=%E8%80%81%E7%8E%8B%E7%81%B6%E5%92%96%20%E6%96%B0%E7%AB%B9%E5%B8%82%E6%9D%B1%E5%8D%80%E5%85%89%E5%BE%A9%E8%B7%AF%E4%B8%80%E6%AE%B550%E8%99%9F" target="_blank" rel="noopener">地圖</a></td></tr><tr class="row" data-q="大無敵烤肉飯 新竹市東區光復路一段522號  新竹東區・光復路一段一帶" data-idx="14"><td class="c-name"><div class="name">大無敵烤肉飯</div></td><td class="c-addr">新竹市東區光復路一段522號</td><td class="c-map"><a class="map" href="https://www.google.com/maps/search/?api=1&amp;query=%E5%A4%A7%E7%84%A1%E6%95%B5%E7%83%A4%E8%82%89%E9%A3%AF%20%E6%96%B0%E7%AB%B9%E5%B8%82%E6%9D%B1%E5%8D%80%E5%85%89%E5%BE%A9%E8%B7%AF%E4%B8%80%E6%AE%B5522%E8%99%9F" target="_blank" rel="noopener">地圖</a></td></tr><tr class="row" data-q="元氣健康廚房 新竹市東區光復路一段525巷31號  新竹東區・光復路一段一帶" data-idx="15"><td class="c-name"><div class="name">元氣健康廚房</div></td><td class="c-addr">新竹市東區光復路一段525巷31號</td><td class="c-map"><a class="map" href="https://www.google.com/maps/search/?api=1&amp;query=%E5%85%83%E6%B0%A3%E5%81%A5%E5%BA%B7%E5%BB%9A%E6%88%BF%20%E6%96%B0%E7%AB%B9%E5%B8%82%E6%9D%B1%E5%8D%80%E5%85%89%E5%BE%A9%E8%B7%AF%E4%B8%80%E6%AE%B5525%E5%B7%B731%E8%99%9F" target="_blank" rel="noopener">地圖</a></td></tr><tr class="row" data-q="肯德基(光復店) 新竹市東區光復路一段536號  新竹東區・光復路一段一帶" data-idx="16"><td class="c-name"><div class="name">肯德基(光復店)</div></td><td class="c-addr">新竹市東區光復路一段536號</td><td class="c-map"><a class="map" href="https://www.google.com/maps/search/?api=1&amp;query=%E8%82%AF%E5%BE%B7%E5%9F%BA%28%E5%85%89%E5%BE%A9%E5%BA%97%29%20%E6%96%B0%E7%AB%B9%E5%B8%82%E6%9D%B1%E5%8D%80%E5%85%89%E5%BE%A9%E8%B7%AF%E4%B8%80%E6%AE%B5536%E8%99%9F" target="_blank" rel="noopener">地圖</a></td></tr><tr class="row" data-q="川牛木石亭 新竹市東區光復路一段599號  新竹東區・光復路一段一帶" data-idx="17"><td class="c-name"><div class="name">川牛木石亭</div></td><td class="c-addr">新竹市東區光復路一段599號</td><td class="c-map"><a class="map" href="https://www.google.com/maps/search/?api=1&amp;query=%E5%B7%9D%E7%89%9B%E6%9C%A8%E7%9F%B3%E4%BA%AD%20%E6%96%B0%E7%AB%B9%E5%B8%82%E6%9D%B1%E5%8D%80%E5%85%89%E5%BE%A9%E8%B7%AF%E4%B8%80%E6%AE%B5599%E8%99%9F" target="_blank" rel="noopener">地圖</a></td></tr><tr class="row" data-q="麻辣大腸麵線 新竹市東區光復路一段89巷2號  新竹東區・光復路一段一帶" data-idx="18"><td class="c-name"><div class="name">麻辣大腸麵線</div></td><td class="c-addr">新竹市東區光復路一段89巷2號</td><td class="c-map"><a class="map" href="https://maps.app.goo.gl/T1DAeEJCUVuif3bF9" target="_blank" rel="noopener">地圖</a></td></tr></tbody>
+    </table>
+  </div>
+</section>
+<section class="zone" id="新竹東區・光復路二段一帶" data-zone="新竹東區・光復路二段一帶">
+  <h2>新竹東區・光復路二段一帶 <span class="count">7</span></h2>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th class="c-name">店名</th><th class="c-addr">地址</th><th class="c-map">導航</th></tr></thead>
+      <tbody><tr class="row" data-q="幸福客家麵食館 新竹市東區光復路二段171、173號  新竹東區・光復路二段一帶" data-idx="19"><td class="c-name"><div class="name">幸福客家麵食館</div></td><td class="c-addr">新竹市東區光復路二段171、173號</td><td class="c-map"><a class="map" href="https://www.google.com/maps/search/?api=1&amp;query=%E5%B9%B8%E7%A6%8F%E5%AE%A2%E5%AE%B6%E9%BA%B5%E9%A3%9F%E9%A4%A8%20%E6%96%B0%E7%AB%B9%E5%B8%82%E6%9D%B1%E5%8D%80%E5%85%89%E5%BE%A9%E8%B7%AF%E4%BA%8C%E6%AE%B5171%E3%80%81173%E8%99%9F" target="_blank" rel="noopener">地圖</a></td></tr><tr class="row" data-q="良溡涼麵 新竹市東區光復路二段207號  新竹東區・光復路二段一帶" data-idx="20"><td class="c-name"><div class="name">良溡涼麵</div></td><td class="c-addr">新竹市東區光復路二段207號</td><td class="c-map"><a class="map" href="https://www.google.com/maps/search/?api=1&amp;query=%E8%89%AF%E6%BA%A1%E6%B6%BC%E9%BA%B5%20%E6%96%B0%E7%AB%B9%E5%B8%82%E6%9D%B1%E5%8D%80%E5%85%89%E5%BE%A9%E8%B7%AF%E4%BA%8C%E6%AE%B5207%E8%99%9F" target="_blank" rel="noopener">地圖</a></td></tr><tr class="row" data-q="朕在嚐粉(馬偕店) 新竹市東區光復路二段229號  新竹東區・光復路二段一帶" data-idx="21"><td class="c-name"><div class="name">朕在嚐粉(馬偕店)</div></td><td class="c-addr">新竹市東區光復路二段229號</td><td class="c-map"><a class="map" href="https://www.google.com/maps/search/?api=1&amp;query=%E6%9C%95%E5%9C%A8%E5%9A%90%E7%B2%89%28%E9%A6%AC%E5%81%95%E5%BA%97%29%20%E6%96%B0%E7%AB%B9%E5%B8%82%E6%9D%B1%E5%8D%80%E5%85%89%E5%BE%A9%E8%B7%AF%E4%BA%8C%E6%AE%B5229%E8%99%9F" target="_blank" rel="noopener">地圖</a></td></tr><tr class="row" data-q="健人餐廚 新竹市東區光復路二段263號  新竹東區・光復路二段一帶" data-idx="22"><td class="c-name"><div class="name">健人餐廚</div></td><td class="c-addr">新竹市東區光復路二段263號</td><td class="c-map"><a class="map" href="https://www.google.com/maps/search/?api=1&amp;query=%E5%81%A5%E4%BA%BA%E9%A4%90%E5%BB%9A%20%E6%96%B0%E7%AB%B9%E5%B8%82%E6%9D%B1%E5%8D%80%E5%85%89%E5%BE%A9%E8%B7%AF%E4%BA%8C%E6%AE%B5263%E8%99%9F" target="_blank" rel="noopener">地圖</a></td></tr><tr class="row" data-q="付得好廚 新竹市東區光復路二段273號  新竹東區・光復路二段一帶" data-idx="23"><td class="c-name"><div class="name">付得好廚</div></td><td class="c-addr">新竹市東區光復路二段273號</td><td class="c-map"><a class="map" href="https://www.google.com/maps/search/?api=1&amp;query=%E4%BB%98%E5%BE%97%E5%A5%BD%E5%BB%9A%20%E6%96%B0%E7%AB%B9%E5%B8%82%E6%9D%B1%E5%8D%80%E5%85%89%E5%BE%A9%E8%B7%AF%E4%BA%8C%E6%AE%B5273%E8%99%9F" target="_blank" rel="noopener">地圖</a></td></tr><tr class="row" data-q="肯德基(清大店) 新竹市東區光復路二段334號  新竹東區・光復路二段一帶" data-idx="24"><td class="c-name"><div class="name">肯德基(清大店)</div></td><td class="c-addr">新竹市東區光復路二段334號</td><td class="c-map"><a class="map" href="https://www.google.com/maps/search/?api=1&amp;query=%E8%82%AF%E5%BE%B7%E5%9F%BA%28%E6%B8%85%E5%A4%A7%E5%BA%97%29%20%E6%96%B0%E7%AB%B9%E5%B8%82%E6%9D%B1%E5%8D%80%E5%85%89%E5%BE%A9%E8%B7%AF%E4%BA%8C%E6%AE%B5334%E8%99%9F" target="_blank" rel="noopener">地圖</a></td></tr><tr class="row" data-q="必勝客 新竹市東區光復路二段752號1樓  新竹東區・光復路二段一帶" data-idx="25"><td class="c-name"><div class="name">必勝客</div></td><td class="c-addr">新竹市東區光復路二段752號1樓</td><td class="c-map"><a class="map" href="https://www.google.com/maps/search/?api=1&amp;query=%E5%BF%85%E5%8B%9D%E5%AE%A2%20%E6%96%B0%E7%AB%B9%E5%B8%82%E6%9D%B1%E5%8D%80%E5%85%89%E5%BE%A9%E8%B7%AF%E4%BA%8C%E6%AE%B5752%E8%99%9F1%E6%A8%93" target="_blank" rel="noopener">地圖</a></td></tr></tbody>
+    </table>
+  </div>
+</section>
+<section class="zone" id="新竹東區・金山街" data-zone="新竹東區・金山街">
+  <h2>新竹東區・金山街 <span class="count">8</span></h2>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th class="c-name">店名</th><th class="c-addr">地址</th><th class="c-map">導航</th></tr></thead>
+      <tbody><tr class="row" data-q="趁熱吃烤肉飯 新竹市東區金山街117號  新竹東區・金山街" data-idx="26"><td class="c-name"><div class="name">趁熱吃烤肉飯</div></td><td class="c-addr">新竹市東區金山街117號</td><td class="c-map"><a class="map" href="https://www.google.com/maps/search/?api=1&amp;query=%E8%B6%81%E7%86%B1%E5%90%83%E7%83%A4%E8%82%89%E9%A3%AF%20%E6%96%B0%E7%AB%B9%E5%B8%82%E6%9D%B1%E5%8D%80%E9%87%91%E5%B1%B1%E8%A1%97117%E8%99%9F" target="_blank" rel="noopener">地圖</a></td></tr><tr class="row" data-q="梁社漢(金山店) 新竹市東區金山街162號  新竹東區・金山街" data-idx="27"><td class="c-name"><div class="name">梁社漢(金山店)</div></td><td class="c-addr">新竹市東區金山街162號</td><td class="c-map"><a class="map" href="https://www.google.com/maps/search/?api=1&amp;query=%E6%A2%81%E7%A4%BE%E6%BC%A2%28%E9%87%91%E5%B1%B1%E5%BA%97%29%20%E6%96%B0%E7%AB%B9%E5%B8%82%E6%9D%B1%E5%8D%80%E9%87%91%E5%B1%B1%E8%A1%97162%E8%99%9F" target="_blank" rel="noopener">地圖</a></td></tr><tr class="row" data-q="可不可熟成紅茶 新竹市東區金山街20號1樓  新竹東區・金山街" data-idx="28"><td class="c-name"><div class="name">可不可熟成紅茶</div></td><td class="c-addr">新竹市東區金山街20號1樓</td><td class="c-map"><a class="map" href="https://www.google.com/maps/search/?api=1&amp;query=%E5%8F%AF%E4%B8%8D%E5%8F%AF%E7%86%9F%E6%88%90%E7%B4%85%E8%8C%B6%20%E6%96%B0%E7%AB%B9%E5%B8%82%E6%9D%B1%E5%8D%80%E9%87%91%E5%B1%B1%E8%A1%9720%E8%99%9F1%E6%A8%93" target="_blank" rel="noopener">地圖</a></td></tr><tr class="row" data-q="甘泉魚麵 新竹市東區金山街25號  新竹東區・金山街" data-idx="29"><td class="c-name"><div class="name">甘泉魚麵</div></td><td class="c-addr">新竹市東區金山街25號</td><td class="c-map"><a class="map" href="https://maps.app.goo.gl/1q4V6GQ4dY9HrMtU7" target="_blank" rel="noopener">地圖</a></td></tr><tr class="row" data-q="波奇波奇 新竹市東區金山街69號1樓  新竹東區・金山街" data-idx="30"><td class="c-name"><div class="name">波奇波奇</div></td><td class="c-addr">新竹市東區金山街69號1樓</td><td class="c-map"><a class="map" href="https://maps.app.goo.gl/ZfD9foNe4JocV8hC9" target="_blank" rel="noopener">地圖</a></td></tr><tr class="row" data-q="虎呷虎煨 新竹市東區金山街73號  新竹東區・金山街" data-idx="31"><td class="c-name"><div class="name">虎呷虎煨</div></td><td class="c-addr">新竹市東區金山街73號</td><td class="c-map"><a class="map" href="https://www.google.com/maps/search/?api=1&amp;query=%E8%99%8E%E5%91%B7%E8%99%8E%E7%85%A8%20%E6%96%B0%E7%AB%B9%E5%B8%82%E6%9D%B1%E5%8D%80%E9%87%91%E5%B1%B1%E8%A1%9773%E8%99%9F" target="_blank" rel="noopener">地圖</a></td></tr><tr class="row" data-q="八方雲集(金山店) 新竹市東區金山街85號  新竹東區・金山街" data-idx="32"><td class="c-name"><div class="name">八方雲集(金山店)</div></td><td class="c-addr">新竹市東區金山街85號</td><td class="c-map"><a class="map" href="https://www.google.com/maps/search/?api=1&amp;query=%E5%85%AB%E6%96%B9%E9%9B%B2%E9%9B%86%28%E9%87%91%E5%B1%B1%E5%BA%97%29%20%E6%96%B0%E7%AB%B9%E5%B8%82%E6%9D%B1%E5%8D%80%E9%87%91%E5%B1%B1%E8%A1%9785%E8%99%9F" target="_blank" rel="noopener">地圖</a></td></tr><tr class="row" data-q="飯飯 新竹市東區金山街98號  新竹東區・金山街" data-idx="33"><td class="c-name"><div class="name">飯飯</div></td><td class="c-addr">新竹市東區金山街98號</td><td class="c-map"><a class="map" href="https://www.google.com/maps/search/?api=1&amp;query=%E9%A3%AF%E9%A3%AF%20%E6%96%B0%E7%AB%B9%E5%B8%82%E6%9D%B1%E5%8D%80%E9%87%91%E5%B1%B1%E8%A1%9798%E8%99%9F" target="_blank" rel="noopener">地圖</a></td></tr></tbody>
+    </table>
+  </div>
+</section>
+<section class="zone" id="新竹東區・金山一～九街" data-zone="新竹東區・金山一～九街">
+  <h2>新竹東區・金山一～九街 <span class="count">8</span></h2>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th class="c-name">店名</th><th class="c-addr">地址</th><th class="c-map">導航</th></tr></thead>
+      <tbody><tr class="row" data-q="軟蛋醬 新竹市東區金山七街42號  新竹東區・金山一～九街" data-idx="34"><td class="c-name"><div class="name">軟蛋醬</div></td><td class="c-addr">新竹市東區金山七街42號</td><td class="c-map"><a class="map" href="https://www.google.com/maps/search/?api=1&amp;query=%E8%BB%9F%E8%9B%8B%E9%86%AC%20%E6%96%B0%E7%AB%B9%E5%B8%82%E6%9D%B1%E5%8D%80%E9%87%91%E5%B1%B1%E4%B8%83%E8%A1%9742%E8%99%9F" target="_blank" rel="noopener">地圖</a></td></tr><tr class="row" data-q="素食園 新竹市東區金山七街77號  新竹東區・金山一～九街" data-idx="35"><td class="c-name"><div class="name">素食園</div></td><td class="c-addr">新竹市東區金山七街77號</td><td class="c-map"><a class="map" href="https://maps.app.goo.gl/ZX92ERCykGqQDVmS6" target="_blank" rel="noopener">地圖</a></td></tr><tr class="row" data-q="樂泉便當 新竹市東區金山九街36號  新竹東區・金山一～九街" data-idx="36"><td class="c-name"><div class="name">樂泉便當</div></td><td class="c-addr">新竹市東區金山九街36號</td><td class="c-map"><a class="map" href="https://www.google.com/maps/search/?api=1&amp;query=%E6%A8%82%E6%B3%89%E4%BE%BF%E7%95%B6%20%E6%96%B0%E7%AB%B9%E5%B8%82%E6%9D%B1%E5%8D%80%E9%87%91%E5%B1%B1%E4%B9%9D%E8%A1%9736%E8%99%9F" target="_blank" rel="noopener">地圖</a></td></tr><tr class="row" data-q="雙醬咖哩 新竹市東區金山八街140號  新竹東區・金山一～九街" data-idx="37"><td class="c-name"><div class="name">雙醬咖哩</div></td><td class="c-addr">新竹市東區金山八街140號</td><td class="c-map"><a class="map" href="https://www.google.com/maps/search/?api=1&amp;query=%E9%9B%99%E9%86%AC%E5%92%96%E5%93%A9%20%E6%96%B0%E7%AB%B9%E5%B8%82%E6%9D%B1%E5%8D%80%E9%87%91%E5%B1%B1%E5%85%AB%E8%A1%97140%E8%99%9F" target="_blank" rel="noopener">地圖</a></td></tr><tr class="row" data-q="宥福精緻素食 新竹市東區金山八街78號  新竹東區・金山一～九街" data-idx="38"><td class="c-name"><div class="name">宥福精緻素食</div></td><td class="c-addr">新竹市東區金山八街78號</td><td class="c-map"><a class="map" href="https://www.google.com/maps/search/?api=1&amp;query=%E5%AE%A5%E7%A6%8F%E7%B2%BE%E7%B7%BB%E7%B4%A0%E9%A3%9F%20%E6%96%B0%E7%AB%B9%E5%B8%82%E6%9D%B1%E5%8D%80%E9%87%91%E5%B1%B1%E5%85%AB%E8%A1%9778%E8%99%9F" target="_blank" rel="noopener">地圖</a></td></tr><tr class="row" data-q="不一樣的雞肉飯 新竹市東區金山六街2巷1號  新竹東區・金山一～九街" data-idx="39"><td class="c-name"><div class="name">不一樣的雞肉飯</div></td><td class="c-addr">新竹市東區金山六街2巷1號</td><td class="c-map"><a class="map" href="https://www.google.com/maps/search/?api=1&amp;query=%E4%B8%8D%E4%B8%80%E6%A8%A3%E7%9A%84%E9%9B%9E%E8%82%89%E9%A3%AF%20%E6%96%B0%E7%AB%B9%E5%B8%82%E6%9D%B1%E5%8D%80%E9%87%91%E5%B1%B1%E5%85%AD%E8%A1%972%E5%B7%B71%E8%99%9F" target="_blank" rel="noopener">地圖</a></td></tr><tr class="row" data-q="禾米雞腿大王 新竹市東區金山六街8巷8號  新竹東區・金山一～九街" data-idx="40"><td class="c-name"><div class="name">禾米雞腿大王</div></td><td class="c-addr">新竹市東區金山六街8巷8號</td><td class="c-map"><a class="map" href="https://www.google.com/maps/search/?api=1&amp;query=%E7%A6%BE%E7%B1%B3%E9%9B%9E%E8%85%BF%E5%A4%A7%E7%8E%8B%20%E6%96%B0%E7%AB%B9%E5%B8%82%E6%9D%B1%E5%8D%80%E9%87%91%E5%B1%B1%E5%85%AD%E8%A1%978%E5%B7%B78%E8%99%9F" target="_blank" rel="noopener">地圖</a></td></tr><tr class="row" data-q="玉享餐廚 金山六街35號  新竹東區・金山一～九街" data-idx="41"><td class="c-name"><div class="name">玉享餐廚</div></td><td class="c-addr">金山六街35號</td><td class="c-map"><a class="map" href="https://maps.app.goo.gl/iP3tT7WCCncJPUHf9" target="_blank" rel="noopener">地圖</a></td></tr></tbody>
+    </table>
+  </div>
+</section>
+<section class="zone" id="新竹東區・金山十街～十九街" data-zone="新竹東區・金山十街～十九街">
+  <h2>新竹東區・金山十街～十九街 <span class="count">10</span></h2>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th class="c-name">店名</th><th class="c-addr">地址</th><th class="c-map">導航</th></tr></thead>
+      <tbody><tr class="row" data-q="泰速泰式料理 新竹市東區金山十一街13號  新竹東區・金山十街～十九街" data-idx="42"><td class="c-name"><div class="name">泰速泰式料理</div></td><td class="c-addr">新竹市東區金山十一街13號</td><td class="c-map"><a class="map" href="https://www.google.com/maps/search/?api=1&amp;query=%E6%B3%B0%E9%80%9F%E6%B3%B0%E5%BC%8F%E6%96%99%E7%90%86%20%E6%96%B0%E7%AB%B9%E5%B8%82%E6%9D%B1%E5%8D%80%E9%87%91%E5%B1%B1%E5%8D%81%E4%B8%80%E8%A1%9713%E8%99%9F" target="_blank" rel="noopener">地圖</a></td></tr><tr class="row" data-q="金街傳統小吃 新竹市東區金山十一街25號  新竹東區・金山十街～十九街" data-idx="43"><td class="c-name"><div class="name">金街傳統小吃</div></td><td class="c-addr">新竹市東區金山十一街25號</td><td class="c-map"><a class="map" href="https://www.google.com/maps/search/?api=1&amp;query=%E9%87%91%E8%A1%97%E5%82%B3%E7%B5%B1%E5%B0%8F%E5%90%83%20%E6%96%B0%E7%AB%B9%E5%B8%82%E6%9D%B1%E5%8D%80%E9%87%91%E5%B1%B1%E5%8D%81%E4%B8%80%E8%A1%9725%E8%99%9F" target="_blank" rel="noopener">地圖</a></td></tr><tr class="row" data-q="鶴茶樓 新竹市東區金山十一街27號  新竹東區・金山十街～十九街" data-idx="44"><td class="c-name"><div class="name">鶴茶樓</div></td><td class="c-addr">新竹市東區金山十一街27號</td><td class="c-map"><a class="map" href="https://maps.app.goo.gl/QUe1VvTnuZCX1KX7A" target="_blank" rel="noopener">地圖</a></td></tr><tr class="row" data-q="墨竹亭 新竹市東區金山十一街31號  新竹東區・金山十街～十九街" data-idx="45"><td class="c-name"><div class="name">墨竹亭</div></td><td class="c-addr">新竹市東區金山十一街31號</td><td class="c-map"><a class="map" href="https://www.google.com/maps/search/?api=1&amp;query=%E5%A2%A8%E7%AB%B9%E4%BA%AD%20%E6%96%B0%E7%AB%B9%E5%B8%82%E6%9D%B1%E5%8D%80%E9%87%91%E5%B1%B1%E5%8D%81%E4%B8%80%E8%A1%9731%E8%99%9F" target="_blank" rel="noopener">地圖</a></td></tr><tr class="row" data-q="做食豔脆皮煎餃 新竹市東區金山十一街33號  新竹東區・金山十街～十九街" data-idx="46"><td class="c-name"><div class="name">做食豔脆皮煎餃</div></td><td class="c-addr">新竹市東區金山十一街33號</td><td class="c-map"><a class="map" href="https://maps.app.goo.gl/FRdu7KRj21owbXDaA" target="_blank" rel="noopener">地圖</a></td></tr><tr class="row" data-q="daima 大馬南洋料理 新竹市東區金山十一街37號  新竹東區・金山十街～十九街" data-idx="47"><td class="c-name"><div class="name">DAIMA 大馬南洋料理</div></td><td class="c-addr">新竹市東區金山十一街37號</td><td class="c-map"><a class="map" href="https://www.google.com/maps/search/?api=1&amp;query=DAIMA%20%E5%A4%A7%E9%A6%AC%E5%8D%97%E6%B4%8B%E6%96%99%E7%90%86%20%E6%96%B0%E7%AB%B9%E5%B8%82%E6%9D%B1%E5%8D%80%E9%87%91%E5%B1%B1%E5%8D%81%E4%B8%80%E8%A1%9737%E8%99%9F" target="_blank" rel="noopener">地圖</a></td></tr><tr class="row" data-q="金山越南小館 新竹市東區金山十二街31號  新竹東區・金山十街～十九街" data-idx="48"><td class="c-name"><div class="name">金山越南小館</div></td><td class="c-addr">新竹市東區金山十二街31號</td><td class="c-map"><a class="map" href="https://www.google.com/maps/search/?api=1&amp;query=%E9%87%91%E5%B1%B1%E8%B6%8A%E5%8D%97%E5%B0%8F%E9%A4%A8%20%E6%96%B0%E7%AB%B9%E5%B8%82%E6%9D%B1%E5%8D%80%E9%87%91%E5%B1%B1%E5%8D%81%E4%BA%8C%E8%A1%9731%E8%99%9F" target="_blank" rel="noopener">地圖</a></td></tr><tr class="row" data-q="能量先生 新竹市東區金山十街36號  新竹東區・金山十街～十九街" data-idx="49"><td class="c-name"><div class="name">能量先生</div></td><td class="c-addr">新竹市東區金山十街36號</td><td class="c-map"><a class="map" href="https://www.google.com/maps/search/?api=1&amp;query=%E8%83%BD%E9%87%8F%E5%85%88%E7%94%9F%20%E6%96%B0%E7%AB%B9%E5%B8%82%E6%9D%B1%E5%8D%80%E9%87%91%E5%B1%B1%E5%8D%81%E8%A1%9736%E8%99%9F" target="_blank" rel="noopener">地圖</a></td></tr><tr class="row" data-q="雙饗丼 新竹市東區金山十街38號  新竹東區・金山十街～十九街" data-idx="50"><td class="c-name"><div class="name">雙饗丼</div></td><td class="c-addr">新竹市東區金山十街38號</td><td class="c-map"><a class="map" href="https://maps.app.goo.gl/Ess7isnJpcnHpakE7" target="_blank" rel="noopener">地圖</a></td></tr><tr class="row" data-q="手作功夫茶 新竹市東區金山十街50號  新竹東區・金山十街～十九街" data-idx="51"><td class="c-name"><div class="name">手作功夫茶</div></td><td class="c-addr">新竹市東區金山十街50號</td><td class="c-map"><a class="map" href="https://www.google.com/maps/search/?api=1&amp;query=%E6%89%8B%E4%BD%9C%E5%8A%9F%E5%A4%AB%E8%8C%B6%20%E6%96%B0%E7%AB%B9%E5%B8%82%E6%9D%B1%E5%8D%80%E9%87%91%E5%B1%B1%E5%8D%81%E8%A1%9750%E8%99%9F" target="_blank" rel="noopener">地圖</a></td></tr></tbody>
+    </table>
+  </div>
+</section>
+<section class="zone" id="新竹東區・金山二十街附近" data-zone="新竹東區・金山二十街附近">
+  <h2>新竹東區・金山二十街附近 <span class="count">2</span></h2>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th class="c-name">店名</th><th class="c-addr">地址</th><th class="c-map">導航</th></tr></thead>
+      <tbody><tr class="row" data-q="佳軒園 新竹市東區金山二十三街48號  新竹東區・金山二十街附近" data-idx="52"><td class="c-name"><div class="name">佳軒園</div></td><td class="c-addr">新竹市東區金山二十三街48號</td><td class="c-map"><a class="map" href="https://www.google.com/maps/search/?api=1&amp;query=%E4%BD%B3%E8%BB%92%E5%9C%92%20%E6%96%B0%E7%AB%B9%E5%B8%82%E6%9D%B1%E5%8D%80%E9%87%91%E5%B1%B1%E4%BA%8C%E5%8D%81%E4%B8%89%E8%A1%9748%E8%99%9F" target="_blank" rel="noopener">地圖</a></td></tr><tr class="row" data-q="初麵麵 新竹市東區金山二十二街2號  新竹東區・金山二十街附近" data-idx="53"><td class="c-name"><div class="name">初麵麵</div></td><td class="c-addr">新竹市東區金山二十二街2號</td><td class="c-map"><a class="map" href="https://maps.app.goo.gl/jZjoD6cmos9nran69" target="_blank" rel="noopener">地圖</a></td></tr></tbody>
+    </table>
+  </div>
+</section>
+<section class="zone" id="新竹東區・東南街一帶" data-zone="新竹東區・東南街一帶">
+  <h2>新竹東區・東南街一帶 <span class="count">7</span></h2>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th class="c-name">店名</th><th class="c-addr">地址</th><th class="c-map">導航</th></tr></thead>
+      <tbody><tr class="row" data-q="有滋䒜健康餐 新竹市東區東南街123號  新竹東區・東南街一帶" data-idx="54"><td class="c-name"><div class="name">有滋䒜健康餐</div></td><td class="c-addr">新竹市東區東南街123號</td><td class="c-map"><a class="map" href="https://www.google.com/maps/search/?api=1&amp;query=%E6%9C%89%E6%BB%8B%E4%92%9C%E5%81%A5%E5%BA%B7%E9%A4%90%20%E6%96%B0%E7%AB%B9%E5%B8%82%E6%9D%B1%E5%8D%80%E6%9D%B1%E5%8D%97%E8%A1%97123%E8%99%9F" target="_blank" rel="noopener">地圖</a></td></tr><tr class="row" data-q="朕在嚐粉(東南店) 新竹市東區東南街129號  新竹東區・東南街一帶" data-idx="55"><td class="c-name"><div class="name">朕在嚐粉(東南店)</div></td><td class="c-addr">新竹市東區東南街129號</td><td class="c-map"><a class="map" href="https://www.google.com/maps/search/?api=1&amp;query=%E6%9C%95%E5%9C%A8%E5%9A%90%E7%B2%89%28%E6%9D%B1%E5%8D%97%E5%BA%97%29%20%E6%96%B0%E7%AB%B9%E5%B8%82%E6%9D%B1%E5%8D%80%E6%9D%B1%E5%8D%97%E8%A1%97129%E8%99%9F" target="_blank" rel="noopener">地圖</a></td></tr><tr class="row" data-q="台南虱目魚鹽水意麵 新竹市東區東南街191號  新竹東區・東南街一帶" data-idx="56"><td class="c-name"><div class="name">台南虱目魚鹽水意麵</div></td><td class="c-addr">新竹市東區東南街191號</td><td class="c-map"><a class="map" href="https://www.google.com/maps/search/?api=1&amp;query=%E5%8F%B0%E5%8D%97%E8%99%B1%E7%9B%AE%E9%AD%9A%E9%B9%BD%E6%B0%B4%E6%84%8F%E9%BA%B5%20%E6%96%B0%E7%AB%B9%E5%B8%82%E6%9D%B1%E5%8D%80%E6%9D%B1%E5%8D%97%E8%A1%97191%E8%99%9F" target="_blank" rel="noopener">地圖</a></td></tr><tr class="row" data-q="金品魷魚羹 新竹市東區東南街205號  新竹東區・東南街一帶" data-idx="57"><td class="c-name"><div class="name">金品魷魚羹</div></td><td class="c-addr">新竹市東區東南街205號</td><td class="c-map"><a class="map" href="https://www.google.com/maps/search/?api=1&amp;query=%E9%87%91%E5%93%81%E9%AD%B7%E9%AD%9A%E7%BE%B9%20%E6%96%B0%E7%AB%B9%E5%B8%82%E6%9D%B1%E5%8D%80%E6%9D%B1%E5%8D%97%E8%A1%97205%E8%99%9F" target="_blank" rel="noopener">地圖</a></td></tr><tr class="row" data-q="山房吐司料理 新竹市東區東南街245號  新竹東區・東南街一帶" data-idx="58"><td class="c-name"><div class="name">山房吐司料理</div></td><td class="c-addr">新竹市東區東南街245號</td><td class="c-map"><a class="map" href="https://www.google.com/maps/search/?api=1&amp;query=%E5%B1%B1%E6%88%BF%E5%90%90%E5%8F%B8%E6%96%99%E7%90%86%20%E6%96%B0%E7%AB%B9%E5%B8%82%E6%9D%B1%E5%8D%80%E6%9D%B1%E5%8D%97%E8%A1%97245%E8%99%9F" target="_blank" rel="noopener">地圖</a></td></tr><tr class="row" data-q="享稻 新竹市東區東南街291號  新竹東區・東南街一帶" data-idx="59"><td class="c-name"><div class="name">享稻</div></td><td class="c-addr">新竹市東區東南街291號</td><td class="c-map"><a class="map" href="https://maps.app.goo.gl/oKMmKz2soR6FbHWP9" target="_blank" rel="noopener">地圖</a></td></tr><tr class="row" data-q="茉食餐盒 新竹市東區東南街293號  新竹東區・東南街一帶" data-idx="60"><td class="c-name"><div class="name">茉食餐盒</div></td><td class="c-addr">新竹市東區東南街293號</td><td class="c-map"><a class="map" href="https://www.google.com/maps/search/?api=1&amp;query=%E8%8C%89%E9%A3%9F%E9%A4%90%E7%9B%92%20%E6%96%B0%E7%AB%B9%E5%B8%82%E6%9D%B1%E5%8D%80%E6%9D%B1%E5%8D%97%E8%A1%97293%E8%99%9F" target="_blank" rel="noopener">地圖</a></td></tr></tbody>
+    </table>
+  </div>
+</section>
+<section class="zone" id="新竹東區・學府路一帶" data-zone="新竹東區・學府路一帶">
+  <h2>新竹東區・學府路一帶 <span class="count">4</span></h2>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th class="c-name">店名</th><th class="c-addr">地址</th><th class="c-map">導航</th></tr></thead>
+      <tbody><tr class="row" data-q="豪食燉品屋 新竹市東區學府路156號  新竹東區・學府路一帶" data-idx="61"><td class="c-name"><div class="name">豪食燉品屋</div></td><td class="c-addr">新竹市東區學府路156號</td><td class="c-map"><a class="map" href="https://www.google.com/maps/search/?api=1&amp;query=%E8%B1%AA%E9%A3%9F%E7%87%89%E5%93%81%E5%B1%8B%20%E6%96%B0%E7%AB%B9%E5%B8%82%E6%9D%B1%E5%8D%80%E5%AD%B8%E5%BA%9C%E8%B7%AF156%E8%99%9F" target="_blank" rel="noopener">地圖</a></td></tr><tr class="row" data-q="老雲記餃子館 新竹市東區學府路1號  新竹東區・學府路一帶" data-idx="62"><td class="c-name"><div class="name">老雲記餃子館</div></td><td class="c-addr">新竹市東區學府路1號</td><td class="c-map"><a class="map" href="https://www.google.com/maps/search/?api=1&amp;query=%E8%80%81%E9%9B%B2%E8%A8%98%E9%A4%83%E5%AD%90%E9%A4%A8%20%E6%96%B0%E7%AB%B9%E5%B8%82%E6%9D%B1%E5%8D%80%E5%AD%B8%E5%BA%9C%E8%B7%AF1%E8%99%9F" target="_blank" rel="noopener">地圖</a></td></tr><tr class="row" data-q="楊家古早味美食 新竹市東區學府路215號  新竹東區・學府路一帶" data-idx="63"><td class="c-name"><div class="name">楊家古早味美食</div></td><td class="c-addr">新竹市東區學府路215號</td><td class="c-map"><a class="map" href="https://www.google.com/maps/search/?api=1&amp;query=%E6%A5%8A%E5%AE%B6%E5%8F%A4%E6%97%A9%E5%91%B3%E7%BE%8E%E9%A3%9F%20%E6%96%B0%E7%AB%B9%E5%B8%82%E6%9D%B1%E5%8D%80%E5%AD%B8%E5%BA%9C%E8%B7%AF215%E8%99%9F" target="_blank" rel="noopener">地圖</a></td></tr><tr class="row" data-q="竹美港式料理 新竹市東區學府路73號  新竹東區・學府路一帶" data-idx="64"><td class="c-name"><div class="name">竹美港式料理</div></td><td class="c-addr">新竹市東區學府路73號</td><td class="c-map"><a class="map" href="https://maps.app.goo.gl/zRZD1BSS9fvDaEei7" target="_blank" rel="noopener">地圖</a></td></tr></tbody>
+    </table>
+  </div>
+</section>
+<section class="zone" id="新竹東區・建功路一帶" data-zone="新竹東區・建功路一帶">
+  <h2>新竹東區・建功路一帶 <span class="count">6</span></h2>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th class="c-name">店名</th><th class="c-addr">地址</th><th class="c-map">導航</th></tr></thead>
+      <tbody><tr class="row" data-q="金芝園 新竹市東區建功一路10之2號  新竹東區・建功路一帶" data-idx="65"><td class="c-name"><div class="name">金芝園</div></td><td class="c-addr">新竹市東區建功一路10之2號</td><td class="c-map"><a class="map" href="https://www.google.com/maps/search/?api=1&amp;query=%E9%87%91%E8%8A%9D%E5%9C%92%20%E6%96%B0%E7%AB%B9%E5%B8%82%E6%9D%B1%E5%8D%80%E5%BB%BA%E5%8A%9F%E4%B8%80%E8%B7%AF10%E4%B9%8B2%E8%99%9F" target="_blank" rel="noopener">地圖</a></td></tr><tr class="row" data-q="就是愛壽司 新竹市東區建功一路188號  新竹東區・建功路一帶" data-idx="66"><td class="c-name"><div class="name">就是愛壽司</div></td><td class="c-addr">新竹市東區建功一路188號</td><td class="c-map"><a class="map" href="https://www.google.com/maps/search/?api=1&amp;query=%E5%B0%B1%E6%98%AF%E6%84%9B%E5%A3%BD%E5%8F%B8%20%E6%96%B0%E7%AB%B9%E5%B8%82%E6%9D%B1%E5%8D%80%E5%BB%BA%E5%8A%9F%E4%B8%80%E8%B7%AF188%E8%99%9F" target="_blank" rel="noopener">地圖</a></td></tr><tr class="row" data-q="哈奇客 新竹市東區建功一路35號  新竹東區・建功路一帶" data-idx="67"><td class="c-name"><div class="name">哈奇客</div></td><td class="c-addr">新竹市東區建功一路35號</td><td class="c-map"><a class="map" href="https://www.google.com/maps/search/?api=1&amp;query=%E5%93%88%E5%A5%87%E5%AE%A2%20%E6%96%B0%E7%AB%B9%E5%B8%82%E6%9D%B1%E5%8D%80%E5%BB%BA%E5%8A%9F%E4%B8%80%E8%B7%AF35%E8%99%9F" target="_blank" rel="noopener">地圖</a></td></tr><tr class="row" data-q="吳記蔥蔬餅 新竹市東區建功一路3號  新竹東區・建功路一帶" data-idx="68"><td class="c-name"><div class="name">吳記蔥蔬餅</div></td><td class="c-addr">新竹市東區建功一路3號</td><td class="c-map"><a class="map" href="https://www.google.com/maps/search/?api=1&amp;query=%E5%90%B3%E8%A8%98%E8%94%A5%E8%94%AC%E9%A4%85%20%E6%96%B0%E7%AB%B9%E5%B8%82%E6%9D%B1%E5%8D%80%E5%BB%BA%E5%8A%9F%E4%B8%80%E8%B7%AF3%E8%99%9F" target="_blank" rel="noopener">地圖</a></td></tr><tr class="row" data-q="茶湯會 新竹市東區建功一路68-1號  新竹東區・建功路一帶" data-idx="69"><td class="c-name"><div class="name">茶湯會</div></td><td class="c-addr">新竹市東區建功一路68-1號</td><td class="c-map"><a class="map" href="https://www.google.com/maps/search/?api=1&amp;query=%E8%8C%B6%E6%B9%AF%E6%9C%83%20%E6%96%B0%E7%AB%B9%E5%B8%82%E6%9D%B1%E5%8D%80%E5%BB%BA%E5%8A%9F%E4%B8%80%E8%B7%AF68-1%E8%99%9F" target="_blank" rel="noopener">地圖</a></td></tr><tr class="row" data-q="吉野烤肉飯 新竹市東區建功路22號  新竹東區・建功路一帶" data-idx="70"><td class="c-name"><div class="name">吉野烤肉飯</div></td><td class="c-addr">新竹市東區建功路22號</td><td class="c-map"><a class="map" href="https://www.google.com/maps/search/?api=1&amp;query=%E5%90%89%E9%87%8E%E7%83%A4%E8%82%89%E9%A3%AF%20%E6%96%B0%E7%AB%B9%E5%B8%82%E6%9D%B1%E5%8D%80%E5%BB%BA%E5%8A%9F%E8%B7%AF22%E8%99%9F" target="_blank" rel="noopener">地圖</a></td></tr></tbody>
+    </table>
+  </div>
+</section>
+<section class="zone" id="新竹東區・建中路一帶" data-zone="新竹東區・建中路一帶">
+  <h2>新竹東區・建中路一帶 <span class="count">1</span></h2>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th class="c-name">店名</th><th class="c-addr">地址</th><th class="c-map">導航</th></tr></thead>
+      <tbody><tr class="row" data-q="叁比捌 新竹市東區建中路89號  新竹東區・建中路一帶" data-idx="71"><td class="c-name"><div class="name">叁比捌</div></td><td class="c-addr">新竹市東區建中路89號</td><td class="c-map"><a class="map" href="https://maps.app.goo.gl/YRsUqgKWY9DugEtQ9" target="_blank" rel="noopener">地圖</a></td></tr></tbody>
+    </table>
+  </div>
+</section>
+<section class="zone" id="新竹東區・建新路一帶" data-zone="新竹東區・建新路一帶">
+  <h2>新竹東區・建新路一帶 <span class="count">3</span></h2>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th class="c-name">店名</th><th class="c-addr">地址</th><th class="c-map">導航</th></tr></thead>
+      <tbody><tr class="row" data-q="雙喜餛飩 新竹市東區建新路16號  新竹東區・建新路一帶" data-idx="72"><td class="c-name"><div class="name">雙喜餛飩</div></td><td class="c-addr">新竹市東區建新路16號</td><td class="c-map"><a class="map" href="https://www.google.com/maps/search/?api=1&amp;query=%E9%9B%99%E5%96%9C%E9%A4%9B%E9%A3%A9%20%E6%96%B0%E7%AB%B9%E5%B8%82%E6%9D%B1%E5%8D%80%E5%BB%BA%E6%96%B0%E8%B7%AF16%E8%99%9F" target="_blank" rel="noopener">地圖</a></td></tr><tr class="row" data-q="棗子樹素食 新竹市東區建新路23號  新竹東區・建新路一帶" data-idx="73"><td class="c-name"><div class="name">棗子樹素食</div></td><td class="c-addr">新竹市東區建新路23號</td><td class="c-map"><a class="map" href="https://www.google.com/maps/search/?api=1&amp;query=%E6%A3%97%E5%AD%90%E6%A8%B9%E7%B4%A0%E9%A3%9F%20%E6%96%B0%E7%AB%B9%E5%B8%82%E6%9D%B1%E5%8D%80%E5%BB%BA%E6%96%B0%E8%B7%AF23%E8%99%9F" target="_blank" rel="noopener">地圖</a></td></tr><tr class="row" data-q="豬好運 新竹市東區建新路46號  新竹東區・建新路一帶" data-idx="74"><td class="c-name"><div class="name">豬好運</div></td><td class="c-addr">新竹市東區建新路46號</td><td class="c-map"><a class="map" href="https://www.google.com/maps/search/?api=1&amp;query=%E8%B1%AC%E5%A5%BD%E9%81%8B%20%E6%96%B0%E7%AB%B9%E5%B8%82%E6%9D%B1%E5%8D%80%E5%BB%BA%E6%96%B0%E8%B7%AF46%E8%99%9F" target="_blank" rel="noopener">地圖</a></td></tr></tbody>
+    </table>
+  </div>
+</section>
+<section class="zone" id="新竹東區・關東路一帶" data-zone="新竹東區・關東路一帶">
+  <h2>新竹東區・關東路一帶 <span class="count">4</span></h2>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th class="c-name">店名</th><th class="c-addr">地址</th><th class="c-map">導航</th></tr></thead>
+      <tbody><tr class="row" data-q="眷村大媽 新竹市東區關東路122號  新竹東區・關東路一帶" data-idx="75"><td class="c-name"><div class="name">眷村大媽</div></td><td class="c-addr">新竹市東區關東路122號</td><td class="c-map"><a class="map" href="https://www.google.com/maps/search/?api=1&amp;query=%E7%9C%B7%E6%9D%91%E5%A4%A7%E5%AA%BD%20%E6%96%B0%E7%AB%B9%E5%B8%82%E6%9D%B1%E5%8D%80%E9%97%9C%E6%9D%B1%E8%B7%AF122%E8%99%9F" target="_blank" rel="noopener">地圖</a></td></tr><tr class="row" data-q="無油無慮 新竹市東區關東路202號  新竹東區・關東路一帶" data-idx="76"><td class="c-name"><div class="name">無油無慮</div></td><td class="c-addr">新竹市東區關東路202號</td><td class="c-map"><a class="map" href="https://www.google.com/maps/search/?api=1&amp;query=%E7%84%A1%E6%B2%B9%E7%84%A1%E6%85%AE%20%E6%96%B0%E7%AB%B9%E5%B8%82%E6%9D%B1%E5%8D%80%E9%97%9C%E6%9D%B1%E8%B7%AF202%E8%99%9F" target="_blank" rel="noopener">地圖</a></td></tr><tr class="row" data-q="清心福全(關東店) 新竹市東區關東路2號  新竹東區・關東路一帶" data-idx="77"><td class="c-name"><div class="name">清心福全(關東店)</div></td><td class="c-addr">新竹市東區關東路2號</td><td class="c-map"><a class="map" href="https://www.google.com/maps/search/?api=1&amp;query=%E6%B8%85%E5%BF%83%E7%A6%8F%E5%85%A8%28%E9%97%9C%E6%9D%B1%E5%BA%97%29%20%E6%96%B0%E7%AB%B9%E5%B8%82%E6%9D%B1%E5%8D%80%E9%97%9C%E6%9D%B1%E8%B7%AF2%E8%99%9F" target="_blank" rel="noopener">地圖</a></td></tr><tr class="row" data-q="米菲蔬食 新竹市東區關東路49巷9號  新竹東區・關東路一帶" data-idx="78"><td class="c-name"><div class="name">米菲蔬食</div></td><td class="c-addr">新竹市東區關東路49巷9號</td><td class="c-map"><a class="map" href="https://www.google.com/maps/search/?api=1&amp;query=%E7%B1%B3%E8%8F%B2%E8%94%AC%E9%A3%9F%20%E6%96%B0%E7%AB%B9%E5%B8%82%E6%9D%B1%E5%8D%80%E9%97%9C%E6%9D%B1%E8%B7%AF49%E5%B7%B79%E8%99%9F" target="_blank" rel="noopener">地圖</a></td></tr></tbody>
+    </table>
+  </div>
+</section>
+<section class="zone" id="新竹東區・關新路一帶" data-zone="新竹東區・關新路一帶">
+  <h2>新竹東區・關新路一帶 <span class="count">3</span></h2>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th class="c-name">店名</th><th class="c-addr">地址</th><th class="c-map">導航</th></tr></thead>
+      <tbody><tr class="row" data-q="豬一十五 新竹市東區關新一街50號  新竹東區・關新路一帶" data-idx="79"><td class="c-name"><div class="name">豬一十五</div></td><td class="c-addr">新竹市東區關新一街50號</td><td class="c-map"><a class="map" href="https://www.google.com/maps/search/?api=1&amp;query=%E8%B1%AC%E4%B8%80%E5%8D%81%E4%BA%94%20%E6%96%B0%E7%AB%B9%E5%B8%82%E6%9D%B1%E5%8D%80%E9%97%9C%E6%96%B0%E4%B8%80%E8%A1%9750%E8%99%9F" target="_blank" rel="noopener">地圖</a></td></tr><tr class="row" data-q="梁社漢(關新店) 新竹市東區關新路175號  新竹東區・關新路一帶" data-idx="80"><td class="c-name"><div class="name">梁社漢(關新店)</div></td><td class="c-addr">新竹市東區關新路175號</td><td class="c-map"><a class="map" href="https://www.google.com/maps/search/?api=1&amp;query=%E6%A2%81%E7%A4%BE%E6%BC%A2%28%E9%97%9C%E6%96%B0%E5%BA%97%29%20%E6%96%B0%E7%AB%B9%E5%B8%82%E6%9D%B1%E5%8D%80%E9%97%9C%E6%96%B0%E8%B7%AF175%E8%99%9F" target="_blank" rel="noopener">地圖</a></td></tr><tr class="row" data-q="鬍鬚張(關新店) 新竹市東區關新路177號  新竹東區・關新路一帶" data-idx="81"><td class="c-name"><div class="name">鬍鬚張(關新店)</div></td><td class="c-addr">新竹市東區關新路177號</td><td class="c-map"><a class="map" href="https://www.google.com/maps/search/?api=1&amp;query=%E9%AC%8D%E9%AC%9A%E5%BC%B5%28%E9%97%9C%E6%96%B0%E5%BA%97%29%20%E6%96%B0%E7%AB%B9%E5%B8%82%E6%9D%B1%E5%8D%80%E9%97%9C%E6%96%B0%E8%B7%AF177%E8%99%9F" target="_blank" rel="noopener">地圖</a></td></tr></tbody>
+    </table>
+  </div>
+</section>
+<section class="zone" id="新竹東區・科學園路一帶" data-zone="新竹東區・科學園路一帶">
+  <h2>新竹東區・科學園路一帶 <span class="count">4</span></h2>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th class="c-name">店名</th><th class="c-addr">地址</th><th class="c-map">導航</th></tr></thead>
+      <tbody><tr class="row" data-q="橘品 新竹市東區科學園路131號  新竹東區・科學園路一帶" data-idx="82"><td class="c-name"><div class="name">橘品</div></td><td class="c-addr">新竹市東區科學園路131號</td><td class="c-map"><a class="map" href="https://www.google.com/maps/search/?api=1&amp;query=%E6%A9%98%E5%93%81%20%E6%96%B0%E7%AB%B9%E5%B8%82%E6%9D%B1%E5%8D%80%E7%A7%91%E5%AD%B8%E5%9C%92%E8%B7%AF131%E8%99%9F" target="_blank" rel="noopener">地圖</a></td></tr><tr class="row" data-q="儷舍坊 新竹市東區科學園路34號  新竹東區・科學園路一帶" data-idx="83"><td class="c-name"><div class="name">儷舍坊</div></td><td class="c-addr">新竹市東區科學園路34號</td><td class="c-map"><a class="map" href="https://www.google.com/maps/search/?api=1&amp;query=%E5%84%B7%E8%88%8D%E5%9D%8A%20%E6%96%B0%E7%AB%B9%E5%B8%82%E6%9D%B1%E5%8D%80%E7%A7%91%E5%AD%B8%E5%9C%92%E8%B7%AF34%E8%99%9F" target="_blank" rel="noopener">地圖</a></td></tr><tr class="row" data-q="科學園小吃 新竹市東區科學園路36號  新竹東區・科學園路一帶" data-idx="84"><td class="c-name"><div class="name">科學園小吃</div></td><td class="c-addr">新竹市東區科學園路36號</td><td class="c-map"><a class="map" href="https://www.google.com/maps/search/?api=1&amp;query=%E7%A7%91%E5%AD%B8%E5%9C%92%E5%B0%8F%E5%90%83%20%E6%96%B0%E7%AB%B9%E5%B8%82%E6%9D%B1%E5%8D%80%E7%A7%91%E5%AD%B8%E5%9C%92%E8%B7%AF36%E8%99%9F" target="_blank" rel="noopener">地圖</a></td></tr><tr class="row" data-q="楚大俠快餐 新竹市東區科學園路38號  新竹東區・科學園路一帶" data-idx="85"><td class="c-name"><div class="name">楚大俠快餐</div></td><td class="c-addr">新竹市東區科學園路38號</td><td class="c-map"><a class="map" href="https://www.google.com/maps/search/?api=1&amp;query=%E6%A5%9A%E5%A4%A7%E4%BF%A0%E5%BF%AB%E9%A4%90%20%E6%96%B0%E7%AB%B9%E5%B8%82%E6%9D%B1%E5%8D%80%E7%A7%91%E5%AD%B8%E5%9C%92%E8%B7%AF38%E8%99%9F" target="_blank" rel="noopener">地圖</a></td></tr></tbody>
+    </table>
+  </div>
+</section>
+<section class="zone" id="新竹東區・食品路一帶" data-zone="新竹東區・食品路一帶">
+  <h2>新竹東區・食品路一帶 <span class="count">5</span></h2>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th class="c-name">店名</th><th class="c-addr">地址</th><th class="c-map">導航</th></tr></thead>
+      <tbody><tr class="row" data-q="大茗本位製茶堂 新竹市東區食品路167號  新竹東區・食品路一帶" data-idx="86"><td class="c-name"><div class="name">大茗本位製茶堂</div></td><td class="c-addr">新竹市東區食品路167號</td><td class="c-map"><a class="map" href="https://maps.app.goo.gl/zpzDYoWsvjjDPbTu6" target="_blank" rel="noopener">地圖</a></td></tr><tr class="row" data-q="迷客夏 新竹市東區食品路175號  新竹東區・食品路一帶" data-idx="87"><td class="c-name"><div class="name">迷客夏</div></td><td class="c-addr">新竹市東區食品路175號</td><td class="c-map"><a class="map" href="https://www.google.com/maps/search/?api=1&amp;query=%E8%BF%B7%E5%AE%A2%E5%A4%8F%20%E6%96%B0%E7%AB%B9%E5%B8%82%E6%9D%B1%E5%8D%80%E9%A3%9F%E5%93%81%E8%B7%AF175%E8%99%9F" target="_blank" rel="noopener">地圖</a></td></tr><tr class="row" data-q="麵朝 新竹市東區食品路203號  新竹東區・食品路一帶" data-idx="88"><td class="c-name"><div class="name">麵朝</div></td><td class="c-addr">新竹市東區食品路203號</td><td class="c-map"><a class="map" href="https://www.google.com/maps/search/?api=1&amp;query=%E9%BA%B5%E6%9C%9D%20%E6%96%B0%E7%AB%B9%E5%B8%82%E6%9D%B1%E5%8D%80%E9%A3%9F%E5%93%81%E8%B7%AF203%E8%99%9F" target="_blank" rel="noopener">地圖</a></td></tr><tr class="row" data-q="雞探美丸健康廚房 新竹市東區食品路212號  新竹東區・食品路一帶" data-idx="89"><td class="c-name"><div class="name">雞探美丸健康廚房</div></td><td class="c-addr">新竹市東區食品路212號</td><td class="c-map"><a class="map" href="https://www.google.com/maps/search/?api=1&amp;query=%E9%9B%9E%E6%8E%A2%E7%BE%8E%E4%B8%B8%E5%81%A5%E5%BA%B7%E5%BB%9A%E6%88%BF%20%E6%96%B0%E7%AB%B9%E5%B8%82%E6%9D%B1%E5%8D%80%E9%A3%9F%E5%93%81%E8%B7%AF212%E8%99%9F" target="_blank" rel="noopener">地圖</a></td></tr><tr class="row" data-q="伊村燒肉 新竹市東區食品路237號  新竹東區・食品路一帶" data-idx="90"><td class="c-name"><div class="name">伊村燒肉</div></td><td class="c-addr">新竹市東區食品路237號</td><td class="c-map"><a class="map" href="https://www.google.com/maps/search/?api=1&amp;query=%E4%BC%8A%E6%9D%91%E7%87%92%E8%82%89%20%E6%96%B0%E7%AB%B9%E5%B8%82%E6%9D%B1%E5%8D%80%E9%A3%9F%E5%93%81%E8%B7%AF237%E8%99%9F" target="_blank" rel="noopener">地圖</a></td></tr></tbody>
+    </table>
+  </div>
+</section>
+<section class="zone" id="新竹東區・南大路一帶" data-zone="新竹東區・南大路一帶">
+  <h2>新竹東區・南大路一帶 <span class="count">5</span></h2>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th class="c-name">店名</th><th class="c-addr">地址</th><th class="c-map">導航</th></tr></thead>
+      <tbody><tr class="row" data-q="香港大來燒臘便當(南大店) 新竹市東區南大路257號  新竹東區・南大路一帶" data-idx="91"><td class="c-name"><div class="name">香港大來燒臘便當(南大店)</div></td><td class="c-addr">新竹市東區南大路257號</td><td class="c-map"><a class="map" href="https://www.google.com/maps/search/?api=1&amp;query=%E9%A6%99%E6%B8%AF%E5%A4%A7%E4%BE%86%E7%87%92%E8%87%98%E4%BE%BF%E7%95%B6%28%E5%8D%97%E5%A4%A7%E5%BA%97%29%20%E6%96%B0%E7%AB%B9%E5%B8%82%E6%9D%B1%E5%8D%80%E5%8D%97%E5%A4%A7%E8%B7%AF257%E8%99%9F" target="_blank" rel="noopener">地圖</a></td></tr><tr class="row" data-q="蔬果子 新竹市東區南大路278號  新竹東區・南大路一帶" data-idx="92"><td class="c-name"><div class="name">蔬果子</div></td><td class="c-addr">新竹市東區南大路278號</td><td class="c-map"><a class="map" href="https://www.google.com/maps/search/?api=1&amp;query=%E8%94%AC%E6%9E%9C%E5%AD%90%20%E6%96%B0%E7%AB%B9%E5%B8%82%E6%9D%B1%E5%8D%80%E5%8D%97%E5%A4%A7%E8%B7%AF278%E8%99%9F" target="_blank" rel="noopener">地圖</a></td></tr><tr class="row" data-q="阿文素滷味小吃 新竹市東區南大路308號  新竹東區・南大路一帶" data-idx="93"><td class="c-name"><div class="name">阿文素滷味小吃</div></td><td class="c-addr">新竹市東區南大路308號</td><td class="c-map"><a class="map" href="https://www.google.com/maps/search/?api=1&amp;query=%E9%98%BF%E6%96%87%E7%B4%A0%E6%BB%B7%E5%91%B3%E5%B0%8F%E5%90%83%20%E6%96%B0%E7%AB%B9%E5%B8%82%E6%9D%B1%E5%8D%80%E5%8D%97%E5%A4%A7%E8%B7%AF308%E8%99%9F" target="_blank" rel="noopener">地圖</a></td></tr><tr class="row" data-q="玉龍肉圓 新竹市東區南大路469號  新竹東區・南大路一帶" data-idx="94"><td class="c-name"><div class="name">玉龍肉圓</div></td><td class="c-addr">新竹市東區南大路469號</td><td class="c-map"><a class="map" href="https://maps.app.goo.gl/rCcmtgGCik1BCojk8" target="_blank" rel="noopener">地圖</a></td></tr><tr class="row" data-q="五十嵐(育賢店) 新竹市東區南大路832號  新竹東區・南大路一帶" data-idx="95"><td class="c-name"><div class="name">五十嵐(育賢店)</div></td><td class="c-addr">新竹市東區南大路832號</td><td class="c-map"><a class="map" href="https://www.google.com/maps/search/?api=1&amp;query=%E4%BA%94%E5%8D%81%E5%B5%90%28%E8%82%B2%E8%B3%A2%E5%BA%97%29%20%E6%96%B0%E7%AB%B9%E5%B8%82%E6%9D%B1%E5%8D%80%E5%8D%97%E5%A4%A7%E8%B7%AF832%E8%99%9F" target="_blank" rel="noopener">地圖</a></td></tr></tbody>
+    </table>
+  </div>
+</section>
+<section class="zone" id="新竹東區・新莊街一帶" data-zone="新竹東區・新莊街一帶">
+  <h2>新竹東區・新莊街一帶 <span class="count">4</span></h2>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th class="c-name">店名</th><th class="c-addr">地址</th><th class="c-map">導航</th></tr></thead>
+      <tbody><tr class="row" data-q="白巷子 新竹市東區新莊街12號  新竹東區・新莊街一帶" data-idx="96"><td class="c-name"><div class="name">白巷子</div></td><td class="c-addr">新竹市東區新莊街12號</td><td class="c-map"><a class="map" href="https://maps.app.goo.gl/ycPL44mC3B3roHUr6" target="_blank" rel="noopener">地圖</a></td></tr><tr class="row" data-q="馬甲格格 新竹市東區新莊街206巷14號1樓  新竹東區・新莊街一帶" data-idx="97"><td class="c-name"><div class="name">馬甲格格</div></td><td class="c-addr">新竹市東區新莊街206巷14號1樓</td><td class="c-map"><a class="map" href="https://www.google.com/maps/search/?api=1&amp;query=%E9%A6%AC%E7%94%B2%E6%A0%BC%E6%A0%BC%20%E6%96%B0%E7%AB%B9%E5%B8%82%E6%9D%B1%E5%8D%80%E6%96%B0%E8%8E%8A%E8%A1%97206%E5%B7%B714%E8%99%9F1%E6%A8%93" target="_blank" rel="noopener">地圖</a></td></tr><tr class="row" data-q="米藍餐盒 新竹市東區新莊街230號1樓  新竹東區・新莊街一帶" data-idx="98"><td class="c-name"><div class="name">米藍餐盒</div></td><td class="c-addr">新竹市東區新莊街230號1樓</td><td class="c-map"><a class="map" href="https://www.google.com/maps/search/?api=1&amp;query=%E7%B1%B3%E8%97%8D%E9%A4%90%E7%9B%92%20%E6%96%B0%E7%AB%B9%E5%B8%82%E6%9D%B1%E5%8D%80%E6%96%B0%E8%8E%8A%E8%A1%97230%E8%99%9F1%E6%A8%93" target="_blank" rel="noopener">地圖</a></td></tr><tr class="row" data-q="祿哥乾拌麵 新竹市東區新莊街25號  新竹東區・新莊街一帶" data-idx="99"><td class="c-name"><div class="name">祿哥乾拌麵</div></td><td class="c-addr">新竹市東區新莊街25號</td><td class="c-map"><a class="map" href="https://www.google.com/maps/search/?api=1&amp;query=%E7%A5%BF%E5%93%A5%E4%B9%BE%E6%8B%8C%E9%BA%B5%20%E6%96%B0%E7%AB%B9%E5%B8%82%E6%9D%B1%E5%8D%80%E6%96%B0%E8%8E%8A%E8%A1%9725%E8%99%9F" target="_blank" rel="noopener">地圖</a></td></tr></tbody>
+    </table>
+  </div>
+</section>
+<section class="zone" id="新竹東區・長春街一帶" data-zone="新竹東區・長春街一帶">
+  <h2>新竹東區・長春街一帶 <span class="count">1</span></h2>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th class="c-name">店名</th><th class="c-addr">地址</th><th class="c-map">導航</th></tr></thead>
+      <tbody><tr class="row" data-q="台灣小吃 新竹市東區長春街33號  新竹東區・長春街一帶" data-idx="100"><td class="c-name"><div class="name">台灣小吃</div></td><td class="c-addr">新竹市東區長春街33號</td><td class="c-map"><a class="map" href="https://maps.app.goo.gl/jjyHBQrDBRMJTKRF7" target="_blank" rel="noopener">地圖</a></td></tr></tbody>
+    </table>
+  </div>
+</section>
+<section class="zone" id="新竹東區・埔頂一帶" data-zone="新竹東區・埔頂一帶">
+  <h2>新竹東區・埔頂一帶 <span class="count">5</span></h2>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th class="c-name">店名</th><th class="c-addr">地址</th><th class="c-map">導航</th></tr></thead>
+      <tbody><tr class="row" data-q="愛波奇 新竹市東區埔頂一路159號  新竹東區・埔頂一帶" data-idx="101"><td class="c-name"><div class="name">愛波奇</div></td><td class="c-addr">新竹市東區埔頂一路159號</td><td class="c-map"><a class="map" href="https://www.google.com/maps/search/?api=1&amp;query=%E6%84%9B%E6%B3%A2%E5%A5%87%20%E6%96%B0%E7%AB%B9%E5%B8%82%E6%9D%B1%E5%8D%80%E5%9F%94%E9%A0%82%E4%B8%80%E8%B7%AF159%E8%99%9F" target="_blank" rel="noopener">地圖</a></td></tr><tr class="row" data-q="方最茗品 新竹市東區埔頂二路8號  新竹東區・埔頂一帶" data-idx="102"><td class="c-name"><div class="name">方最茗品</div></td><td class="c-addr">新竹市東區埔頂二路8號</td><td class="c-map"><a class="map" href="https://www.google.com/maps/search/?api=1&amp;query=%E6%96%B9%E6%9C%80%E8%8C%97%E5%93%81%20%E6%96%B0%E7%AB%B9%E5%B8%82%E6%9D%B1%E5%8D%80%E5%9F%94%E9%A0%82%E4%BA%8C%E8%B7%AF8%E8%99%9F" target="_blank" rel="noopener">地圖</a></td></tr><tr class="row" data-q="鵝子 新竹市東區埔頂路28號  新竹東區・埔頂一帶" data-idx="103"><td class="c-name"><div class="name">鵝子</div></td><td class="c-addr">新竹市東區埔頂路28號</td><td class="c-map"><a class="map" href="https://maps.app.goo.gl/WWdUTpy6ZvtkzPL37" target="_blank" rel="noopener">地圖</a></td></tr><tr class="row" data-q="四海遊龍 新竹市東區埔頂路32號  新竹東區・埔頂一帶" data-idx="104"><td class="c-name"><div class="name">四海遊龍</div></td><td class="c-addr">新竹市東區埔頂路32號</td><td class="c-map"><a class="map" href="https://maps.app.goo.gl/QwHhcrjxagj5DTRd7" target="_blank" rel="noopener">地圖</a></td></tr><tr class="row" data-q="埔頂快餐 新竹市東區埔頂路65號  新竹東區・埔頂一帶" data-idx="105"><td class="c-name"><div class="name">埔頂快餐</div></td><td class="c-addr">新竹市東區埔頂路65號</td><td class="c-map"><a class="map" href="https://maps.app.goo.gl/grDYiJdzwJw4kLEc6" target="_blank" rel="noopener">地圖</a></td></tr></tbody>
+    </table>
+  </div>
+</section>
+<section class="zone" id="新竹東區・高翠路一帶" data-zone="新竹東區・高翠路一帶">
+  <h2>新竹東區・高翠路一帶 <span class="count">2</span></h2>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th class="c-name">店名</th><th class="c-addr">地址</th><th class="c-map">導航</th></tr></thead>
+      <tbody><tr class="row" data-q="雲南泰式小吃 新竹市東區高翠路217號  新竹東區・高翠路一帶" data-idx="106"><td class="c-name"><div class="name">雲南泰式小吃</div></td><td class="c-addr">新竹市東區高翠路217號</td><td class="c-map"><a class="map" href="https://www.google.com/maps/search/?api=1&amp;query=%E9%9B%B2%E5%8D%97%E6%B3%B0%E5%BC%8F%E5%B0%8F%E5%90%83%20%E6%96%B0%E7%AB%B9%E5%B8%82%E6%9D%B1%E5%8D%80%E9%AB%98%E7%BF%A0%E8%B7%AF217%E8%99%9F" target="_blank" rel="noopener">地圖</a></td></tr><tr class="row" data-q="李媽媽筒仔米糕 新竹市東區高翠路355號  新竹東區・高翠路一帶" data-idx="107"><td class="c-name"><div class="name">李媽媽筒仔米糕</div></td><td class="c-addr">新竹市東區高翠路355號</td><td class="c-map"><a class="map" href="https://www.google.com/maps/search/?api=1&amp;query=%E6%9D%8E%E5%AA%BD%E5%AA%BD%E7%AD%92%E4%BB%94%E7%B1%B3%E7%B3%95%20%E6%96%B0%E7%AB%B9%E5%B8%82%E6%9D%B1%E5%8D%80%E9%AB%98%E7%BF%A0%E8%B7%AF355%E8%99%9F" target="_blank" rel="noopener">地圖</a></td></tr></tbody>
+    </table>
+  </div>
+</section>
+<section class="zone" id="新竹東區・寶山路一帶" data-zone="新竹東區・寶山路一帶">
+  <h2>新竹東區・寶山路一帶 <span class="count">4</span></h2>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th class="c-name">店名</th><th class="c-addr">地址</th><th class="c-map">導航</th></tr></thead>
+      <tbody><tr class="row" data-q="食品生活禪精緻素食 新竹市東區寶山路114號  新竹東區・寶山路一帶" data-idx="108"><td class="c-name"><div class="name">食品生活禪精緻素食</div></td><td class="c-addr">新竹市東區寶山路114號</td><td class="c-map"><a class="map" href="https://maps.app.goo.gl/kQhigVhgx1GEbkgt7" target="_blank" rel="noopener">地圖</a></td></tr><tr class="row" data-q="五十嵐(寶山店) 新竹市東區寶山路408-1號  新竹東區・寶山路一帶" data-idx="109"><td class="c-name"><div class="name">五十嵐(寶山店)</div></td><td class="c-addr">新竹市東區寶山路408-1號</td><td class="c-map"><a class="map" href="https://www.google.com/maps/search/?api=1&amp;query=%E4%BA%94%E5%8D%81%E5%B5%90%28%E5%AF%B6%E5%B1%B1%E5%BA%97%29%20%E6%96%B0%E7%AB%B9%E5%B8%82%E6%9D%B1%E5%8D%80%E5%AF%B6%E5%B1%B1%E8%B7%AF408-1%E8%99%9F" target="_blank" rel="noopener">地圖</a></td></tr><tr class="row" data-q="如是我聞素食海苔飯捲 新竹市東區寶山路40號  新竹東區・寶山路一帶" data-idx="110"><td class="c-name"><div class="name">如是我聞素食海苔飯捲</div></td><td class="c-addr">新竹市東區寶山路40號</td><td class="c-map"><a class="map" href="https://www.google.com/maps/search/?api=1&amp;query=%E5%A6%82%E6%98%AF%E6%88%91%E8%81%9E%E7%B4%A0%E9%A3%9F%E6%B5%B7%E8%8B%94%E9%A3%AF%E6%8D%B2%20%E6%96%B0%E7%AB%B9%E5%B8%82%E6%9D%B1%E5%8D%80%E5%AF%B6%E5%B1%B1%E8%B7%AF40%E8%99%9F" target="_blank" rel="noopener">地圖</a></td></tr><tr class="row" data-q="軒邑快餐 新竹市東區寶山路426號  新竹東區・寶山路一帶" data-idx="111"><td class="c-name"><div class="name">軒邑快餐</div></td><td class="c-addr">新竹市東區寶山路426號</td><td class="c-map"><a class="map" href="https://www.google.com/maps/search/?api=1&amp;query=%E8%BB%92%E9%82%91%E5%BF%AB%E9%A4%90%20%E6%96%B0%E7%AB%B9%E5%B8%82%E6%9D%B1%E5%8D%80%E5%AF%B6%E5%B1%B1%E8%B7%AF426%E8%99%9F" target="_blank" rel="noopener">地圖</a></td></tr></tbody>
+    </table>
+  </div>
+</section>
+<section class="zone" id="新竹東區・忠孝路一帶" data-zone="新竹東區・忠孝路一帶">
+  <h2>新竹東區・忠孝路一帶 <span class="count">1</span></h2>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th class="c-name">店名</th><th class="c-addr">地址</th><th class="c-map">導航</th></tr></thead>
+      <tbody><tr class="row" data-q="思茶(馬偕店) 新竹市東區忠孝路47號  新竹東區・忠孝路一帶" data-idx="112"><td class="c-name"><div class="name">思茶(馬偕店)</div></td><td class="c-addr">新竹市東區忠孝路47號</td><td class="c-map"><a class="map" href="https://www.google.com/maps/search/?api=1&amp;query=%E6%80%9D%E8%8C%B6%28%E9%A6%AC%E5%81%95%E5%BA%97%29%20%E6%96%B0%E7%AB%B9%E5%B8%82%E6%9D%B1%E5%8D%80%E5%BF%A0%E5%AD%9D%E8%B7%AF47%E8%99%9F" target="_blank" rel="noopener">地圖</a></td></tr></tbody>
+    </table>
+  </div>
+</section>
+<section class="zone" id="新竹東區・興學街一帶" data-zone="新竹東區・興學街一帶">
+  <h2>新竹東區・興學街一帶 <span class="count">2</span></h2>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th class="c-name">店名</th><th class="c-addr">地址</th><th class="c-map">導航</th></tr></thead>
+      <tbody><tr class="row" data-q="家味園 新竹市東區興學街111號  新竹東區・興學街一帶" data-idx="113"><td class="c-name"><div class="name">家味園</div></td><td class="c-addr">新竹市東區興學街111號</td><td class="c-map"><a class="map" href="https://www.google.com/maps/search/?api=1&amp;query=%E5%AE%B6%E5%91%B3%E5%9C%92%20%E6%96%B0%E7%AB%B9%E5%B8%82%E6%9D%B1%E5%8D%80%E8%88%88%E5%AD%B8%E8%A1%97111%E8%99%9F" target="_blank" rel="noopener">地圖</a></td></tr><tr class="row" data-q="石記魚丸 新竹市東區興學街44號  新竹東區・興學街一帶" data-idx="114"><td class="c-name"><div class="name">石記魚丸</div></td><td class="c-addr">新竹市東區興學街44號</td><td class="c-map"><a class="map" href="https://www.google.com/maps/search/?api=1&amp;query=%E7%9F%B3%E8%A8%98%E9%AD%9A%E4%B8%B8%20%E6%96%B0%E7%AB%B9%E5%B8%82%E6%9D%B1%E5%8D%80%E8%88%88%E5%AD%B8%E8%A1%9744%E8%99%9F" target="_blank" rel="noopener">地圖</a></td></tr></tbody>
+    </table>
+  </div>
+</section>
+<section class="zone" id="新竹東區・大學路一帶" data-zone="新竹東區・大學路一帶">
+  <h2>新竹東區・大學路一帶 <span class="count">2</span></h2>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th class="c-name">店名</th><th class="c-addr">地址</th><th class="c-map">導航</th></tr></thead>
+      <tbody><tr class="row" data-q="森作餐廚 新竹市東區大學路17號 汽車通知送來 新竹東區・大學路一帶" data-idx="115"><td class="c-name"><div class="name">森作餐廚</div><div class="note">汽車通知送來</div></td><td class="c-addr">新竹市東區大學路17號</td><td class="c-map"><a class="map" href="https://maps.app.goo.gl/P1vq4rL4zCSQZiHv5" target="_blank" rel="noopener">地圖</a></td></tr><tr class="row" data-q="海瑞貢丸 新竹市東區大學路1號  新竹東區・大學路一帶" data-idx="116"><td class="c-name"><div class="name">海瑞貢丸</div></td><td class="c-addr">新竹市東區大學路1號</td><td class="c-map"><a class="map" href="https://maps.app.goo.gl/32z4RcWCCzeyqaDi6" target="_blank" rel="noopener">地圖</a></td></tr></tbody>
+    </table>
+  </div>
+</section>
+<section class="zone" id="新竹東區・東山街一帶" data-zone="新竹東區・東山街一帶">
+  <h2>新竹東區・東山街一帶 <span class="count">1</span></h2>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th class="c-name">店名</th><th class="c-addr">地址</th><th class="c-map">導航</th></tr></thead>
+      <tbody><tr class="row" data-q="燒餅屋 新竹市東區東山街54號  新竹東區・東山街一帶" data-idx="117"><td class="c-name"><div class="name">燒餅屋</div></td><td class="c-addr">新竹市東區東山街54號</td><td class="c-map"><a class="map" href="https://www.google.com/maps/search/?api=1&amp;query=%E7%87%92%E9%A4%85%E5%B1%8B%20%E6%96%B0%E7%AB%B9%E5%B8%82%E6%9D%B1%E5%8D%80%E6%9D%B1%E5%B1%B1%E8%A1%9754%E8%99%9F" target="_blank" rel="noopener">地圖</a></td></tr></tbody>
+    </table>
+  </div>
+</section>
+<section class="zone" id="新竹東區・民有一街一帶" data-zone="新竹東區・民有一街一帶">
+  <h2>新竹東區・民有一街一帶 <span class="count">1</span></h2>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th class="c-name">店名</th><th class="c-addr">地址</th><th class="c-map">導航</th></tr></thead>
+      <tbody><tr class="row" data-q="豐色宴小籠湯包 新竹市東區民有一街1號  新竹東區・民有一街一帶" data-idx="118"><td class="c-name"><div class="name">豐色宴小籠湯包</div></td><td class="c-addr">新竹市東區民有一街1號</td><td class="c-map"><a class="map" href="https://www.google.com/maps/search/?api=1&amp;query=%E8%B1%90%E8%89%B2%E5%AE%B4%E5%B0%8F%E7%B1%A0%E6%B9%AF%E5%8C%85%20%E6%96%B0%E7%AB%B9%E5%B8%82%E6%9D%B1%E5%8D%80%E6%B0%91%E6%9C%89%E4%B8%80%E8%A1%971%E8%99%9F" target="_blank" rel="noopener">地圖</a></td></tr></tbody>
+    </table>
+  </div>
+</section>
+<section class="zone" id="新竹東區・金城路一帶" data-zone="新竹東區・金城路一帶">
+  <h2>新竹東區・金城路一帶 <span class="count">1</span></h2>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th class="c-name">店名</th><th class="c-addr">地址</th><th class="c-map">導航</th></tr></thead>
+      <tbody><tr class="row" data-q="滿素圓 新竹市東區金城一路22號  新竹東區・金城路一帶" data-idx="119"><td class="c-name"><div class="name">滿素圓</div></td><td class="c-addr">新竹市東區金城一路22號</td><td class="c-map"><a class="map" href="https://www.google.com/maps/search/?api=1&amp;query=%E6%BB%BF%E7%B4%A0%E5%9C%93%20%E6%96%B0%E7%AB%B9%E5%B8%82%E6%9D%B1%E5%8D%80%E9%87%91%E5%9F%8E%E4%B8%80%E8%B7%AF22%E8%99%9F" target="_blank" rel="noopener">地圖</a></td></tr></tbody>
+    </table>
+  </div>
+</section>
+<section class="zone" id="新竹東區・其他" data-zone="新竹東區・其他">
+  <h2>新竹東區・其他 <span class="count">2</span></h2>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th class="c-name">店名</th><th class="c-addr">地址</th><th class="c-map">導航</th></tr></thead>
+      <tbody><tr class="row" data-q="嘉賓快餐便當 新竹市東區建美路58巷1號  新竹東區・其他" data-idx="120"><td class="c-name"><div class="name">嘉賓快餐便當</div></td><td class="c-addr">新竹市東區建美路58巷1號</td><td class="c-map"><a class="map" href="https://www.google.com/maps/search/?api=1&amp;query=%E5%98%89%E8%B3%93%E5%BF%AB%E9%A4%90%E4%BE%BF%E7%95%B6%20%E6%96%B0%E7%AB%B9%E5%B8%82%E6%9D%B1%E5%8D%80%E5%BB%BA%E7%BE%8E%E8%B7%AF58%E5%B7%B71%E8%99%9F" target="_blank" rel="noopener">地圖</a></td></tr><tr class="row" data-q="摩斯漢堡 新竹市東區立鵬路160號  新竹東區・其他" data-idx="121"><td class="c-name"><div class="name">摩斯漢堡</div></td><td class="c-addr">新竹市東區立鵬路160號</td><td class="c-map"><a class="map" href="https://maps.app.goo.gl/mRKy5oEk7oXx1CUs8" target="_blank" rel="noopener">地圖</a></td></tr></tbody>
+    </table>
+  </div>
+</section>
+<section class="zone" id="新竹・西大路一帶" data-zone="新竹・西大路一帶">
+  <h2>新竹・西大路一帶 <span class="count">2</span></h2>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th class="c-name">店名</th><th class="c-addr">地址</th><th class="c-map">導航</th></tr></thead>
+      <tbody><tr class="row" data-q="東池池上飯包 新竹市東區西大路136號  新竹・西大路一帶" data-idx="122"><td class="c-name"><div class="name">東池池上飯包</div></td><td class="c-addr">新竹市東區西大路136號</td><td class="c-map"><a class="map" href="https://maps.app.goo.gl/6chX5nyDswUsnWGj6" target="_blank" rel="noopener">地圖</a></td></tr><tr class="row" data-q="御噂醇牛肉麵 新竹市東區西大路95號  新竹・西大路一帶" data-idx="123"><td class="c-name"><div class="name">御噂醇牛肉麵</div></td><td class="c-addr">新竹市東區西大路95號</td><td class="c-map"><a class="map" href="https://www.google.com/maps/search/?api=1&amp;query=%E5%BE%A1%E5%99%82%E9%86%87%E7%89%9B%E8%82%89%E9%BA%B5%20%E6%96%B0%E7%AB%B9%E5%B8%82%E6%9D%B1%E5%8D%80%E8%A5%BF%E5%A4%A7%E8%B7%AF95%E8%99%9F" target="_blank" rel="noopener">地圖</a></td></tr></tbody>
+    </table>
+  </div>
+</section>
+<section class="zone" id="新竹・中正路一帶" data-zone="新竹・中正路一帶">
+  <h2>新竹・中正路一帶 <span class="count">1</span></h2>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th class="c-name">店名</th><th class="c-addr">地址</th><th class="c-map">導航</th></tr></thead>
+      <tbody><tr class="row" data-q="香港大來燒臘便當(中正店) 新竹市北區中正路316號 汽車通知送來 新竹・中正路一帶" data-idx="124"><td class="c-name"><div class="name">香港大來燒臘便當(中正店)</div><div class="note">汽車通知送來</div></td><td class="c-addr">新竹市北區中正路316號</td><td class="c-map"><a class="map" href="https://www.google.com/maps/search/?api=1&amp;query=%E9%A6%99%E6%B8%AF%E5%A4%A7%E4%BE%86%E7%87%92%E8%87%98%E4%BE%BF%E7%95%B6%28%E4%B8%AD%E6%AD%A3%E5%BA%97%29%20%E6%96%B0%E7%AB%B9%E5%B8%82%E5%8C%97%E5%8D%80%E4%B8%AD%E6%AD%A3%E8%B7%AF316%E8%99%9F" target="_blank" rel="noopener">地圖</a></td></tr></tbody>
+    </table>
+  </div>
+</section>
+<section class="zone" id="竹北・勝利路一帶" data-zone="竹北・勝利路一帶">
+  <h2>竹北・勝利路一帶 <span class="count">1</span></h2>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th class="c-name">店名</th><th class="c-addr">地址</th><th class="c-map">導航</th></tr></thead>
+      <tbody><tr class="row" data-q="焢肉趣 新竹縣竹北市勝利一路87號  竹北・勝利路一帶" data-idx="125"><td class="c-name"><div class="name">焢肉趣</div></td><td class="c-addr">新竹縣竹北市勝利一路87號</td><td class="c-map"><a class="map" href="https://www.google.com/maps/search/?api=1&amp;query=%E7%84%A2%E8%82%89%E8%B6%A3%20%E6%96%B0%E7%AB%B9%E7%B8%A3%E7%AB%B9%E5%8C%97%E5%B8%82%E5%8B%9D%E5%88%A9%E4%B8%80%E8%B7%AF87%E8%99%9F" target="_blank" rel="noopener">地圖</a></td></tr></tbody>
+    </table>
+  </div>
+</section>
+<section class="zone" id="寶山鄉・明湖路一帶" data-zone="寶山鄉・明湖路一帶">
+  <h2>寶山鄉・明湖路一帶 <span class="count">1</span></h2>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th class="c-name">店名</th><th class="c-addr">地址</th><th class="c-map">導航</th></tr></thead>
+      <tbody><tr class="row" data-q="佳禾日式炭燒 新竹縣寶山鄉明湖路57號  寶山鄉・明湖路一帶" data-idx="126"><td class="c-name"><div class="name">佳禾日式炭燒</div></td><td class="c-addr">新竹縣寶山鄉明湖路57號</td><td class="c-map"><a class="map" href="https://www.google.com/maps/search/?api=1&amp;query=%E4%BD%B3%E7%A6%BE%E6%97%A5%E5%BC%8F%E7%82%AD%E7%87%92%20%E6%96%B0%E7%AB%B9%E7%B8%A3%E5%AF%B6%E5%B1%B1%E9%84%89%E6%98%8E%E6%B9%96%E8%B7%AF57%E8%99%9F" target="_blank" rel="noopener">地圖</a></td></tr></tbody>
+    </table>
+  </div>
+</section>
+<section class="zone" id="寶山鄉・雙豐路一帶" data-zone="寶山鄉・雙豐路一帶">
+  <h2>寶山鄉・雙豐路一帶 <span class="count">1</span></h2>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th class="c-name">店名</th><th class="c-addr">地址</th><th class="c-map">導航</th></tr></thead>
+      <tbody><tr class="row" data-q="麥味登(雙豐店) 新竹縣寶山鄉雙豐路170號  寶山鄉・雙豐路一帶" data-idx="127"><td class="c-name"><div class="name">麥味登(雙豐店)</div></td><td class="c-addr">新竹縣寶山鄉雙豐路170號</td><td class="c-map"><a class="map" href="https://www.google.com/maps/search/?api=1&amp;query=%E9%BA%A5%E5%91%B3%E7%99%BB%28%E9%9B%99%E8%B1%90%E5%BA%97%29%20%E6%96%B0%E7%AB%B9%E7%B8%A3%E5%AF%B6%E5%B1%B1%E9%84%89%E9%9B%99%E8%B1%90%E8%B7%AF170%E8%99%9F" target="_blank" rel="noopener">地圖</a></td></tr></tbody>
+    </table>
+  </div>
+</section>
+<section class="zone" id="寶山鄉・雙園路一帶" data-zone="寶山鄉・雙園路一帶">
+  <h2>寶山鄉・雙園路一帶 <span class="count">2</span></h2>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th class="c-name">店名</th><th class="c-addr">地址</th><th class="c-map">導航</th></tr></thead>
+      <tbody><tr class="row" data-q="悠畝umuu 新竹縣寶山鄉大崎村雙園路—段二巷17弄32  寶山鄉・雙園路一帶" data-idx="128"><td class="c-name"><div class="name">悠畝Umuu</div></td><td class="c-addr">新竹縣寶山鄉大崎村雙園路—段二巷17弄32</td><td class="c-map"><a class="map" href="https://maps.app.goo.gl/5EULmgfPyvLsiYDh6" target="_blank" rel="noopener">地圖</a></td></tr><tr class="row" data-q="小韓室 新竹縣寶山鄉大崎村雙園路一段2巷2號  寶山鄉・雙園路一帶" data-idx="129"><td class="c-name"><div class="name">小韓室</div></td><td class="c-addr">新竹縣寶山鄉大崎村雙園路一段2巷2號</td><td class="c-map"><a class="map" href="https://maps.app.goo.gl/SoRz28R8dnC1K5Hg9" target="_blank" rel="noopener">地圖</a></td></tr></tbody>
+    </table>
+  </div>
+</section>
+<section class="zone" id="地址待確認" data-zone="地址待確認">
+  <h2>地址待確認 <span class="count">3</span></h2>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th class="c-name">店名</th><th class="c-addr">地址</th><th class="c-map">導航</th></tr></thead>
+      <tbody><tr class="row" data-q="黃師傅蛋包飯 （二倉隔壁）  地址待確認" data-idx="130"><td class="c-name"><div class="name">黃師傅蛋包飯</div></td><td class="c-addr">（二倉隔壁）</td><td class="c-map"><span class="na">—</span></td></tr><tr class="row" data-q="太祖魷魚羹 （汽車通知送來） 汽車通知送來 地址待確認" data-idx="131"><td class="c-name"><div class="name">太祖魷魚羹</div><div class="note">汽車通知送來</div></td><td class="c-addr">（汽車通知送來）</td><td class="c-map"><span class="na">—</span></td></tr><tr class="row" data-q="楽吉裹廚 （汽車通知送來） 汽車通知送來 地址待確認" data-idx="132"><td class="c-name"><div class="name">楽吉裹廚</div><div class="note">汽車通知送來</div></td><td class="c-addr">（汽車通知送來）</td><td class="c-map"><span class="na">—</span></td></tr></tbody>
+    </table>
+  </div>
+</section>
+      </div>
+  <a class="top" href="#">回頂部</a>
+<script>
+(function() {
+  const q = document.getElementById('q');
+  const clearBtn = document.getElementById('clearBtn');
+  const info = document.getElementById('resultInfo');
+  const empty = document.getElementById('empty');
+  const rows = Array.from(document.querySelectorAll('tr.row'));
+  const zones = Array.from(document.querySelectorAll('section.zone'));
+  const total = rows.length;
+  function norm(s) { return (s || '').toLowerCase().trim(); }
+  function apply() {
+    const key = norm(q.value);
+    let shown = 0;
+    rows.forEach(r => {
+      const hit = !key || (r.getAttribute('data-q') || '').includes(key);
+      r.classList.toggle('hidden', !hit);
+      if (hit) shown += 1;
+    });
+    zones.forEach(z => {
+      const visible = z.querySelectorAll('tr.row:not(.hidden)').length;
+      z.classList.toggle('hidden', visible === 0);
+      const badge = z.querySelector('.count');
+      if (badge) badge.textContent = visible;
+    });
+    info.textContent = key ? ('找到 ' + shown + ' / ' + total + ' 筆') : ('共 ' + total + ' 筆');
+    empty.classList.toggle('show', shown === 0);
+  }
+  q.addEventListener('input', apply);
+  clearBtn.addEventListener('click', () => { q.value=''; q.focus(); apply(); });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === '/' && document.activeElement !== q) { e.preventDefault(); q.focus(); }
+  });
+})();
+</script>
+</body>
+</html>
